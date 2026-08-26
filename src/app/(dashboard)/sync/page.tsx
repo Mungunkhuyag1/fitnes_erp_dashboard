@@ -2,11 +2,15 @@
 
 import {
   AlertTriangle,
+  CalendarX,
   CheckCircle2,
+  ChevronDown,
   Clock,
   Loader2,
   RefreshCw,
   RotateCcw,
+  ScanFace,
+  Wrench,
 } from 'lucide-react';
 import { useState } from 'react';
 import { toast } from 'sonner';
@@ -24,6 +28,14 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuGroup,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import {
   Dialog,
   DialogContent,
@@ -52,10 +64,22 @@ interface OutboxRow {
   groupKey: string | null;
 }
 
+/**
+ * Дарааллын мөрийг ажилтны ойлгох хэлээр.
+ *
+ * ⚠ Топик бүр энд байх ЁСТОЙ. Дутвал `loopy.allowPhone` гэсэн түүхий нэр
+ * дэлгэц дээр гарч, ресепшн юу болж байгааг ойлгохгүй.
+ */
 const TOPIC_LABEL: Record<string, string> = {
   'hik.userUpsert': 'Терминалд бичих',
   'hik.setValidity': 'Хугацаа шинэчлэх',
   'hik.userDelete': 'Терминалаас устгах',
+  'loopy.allowPhone': 'Дугаарыг Loopy-д нэмэх',
+  'loopy.disallowPhone': 'Дугаарыг Loopy-гоос хасах',
+  'loopy.extend': 'Картын хугацаа сунгах',
+  'loopy.status': 'Картын төлөв солих',
+  'loopy.fields': 'Картын мэдээлэл шинэчлэх',
+  'loopy.push': 'Wallet мэдэгдэл илгээх',
 };
 
 const STATUS: Record<string, { label: string; tone: string; icon: React.ElementType }> = {
@@ -97,6 +121,7 @@ export default function SyncPage() {
   }
 
   async function runJob(job: 'expire' | 'face-check' | 'device-reconcile') {
+    setBusy(job);
     try {
       const res = await api.post<Record<string, number>>(`/sync/run/${job}`);
       toast.success('Ажил гүйцэтгэгдлээ', {
@@ -106,10 +131,15 @@ export default function SyncPage() {
       });
     } catch (e) {
       toast.error(e instanceof Error ? e.message : 'Алдаа гарлаа');
+    } finally {
+      setBusy(null);
+      reload();
+      reloadStatus();
     }
   }
 
-  const [reconciling, setReconciling] = useState(false);
+  /** Аль ажил ажиллаж байгаа — зэрэг хоёрыг эхлүүлэхээс сэргийлнэ. */
+  const [busy, setBusy] = useState<string | null>(null);
   const [detail, setDetail] = useState<OutboxRow | null>(null);
   const [confirmResyncAll, setConfirmResyncAll] = useState(false);
   const [resyncingAll, setResyncingAll] = useState(false);
@@ -143,7 +173,7 @@ export default function SyncPage() {
    * харуулна — «allowAdded: 3» гэхээс «3 дугаар нэмэв» нь ойлгомжтой.
    */
   async function runReconcile() {
-    setReconciling(true);
+    setBusy('loopy');
     try {
       const r = await api.post<{
         ran: boolean;
@@ -193,7 +223,7 @@ export default function SyncPage() {
     } catch (e) {
       toast.error(e instanceof Error ? e.message : 'Алдаа гарлаа');
     } finally {
-      setReconciling(false);
+      setBusy(null);
     }
   }
 
@@ -281,35 +311,102 @@ export default function SyncPage() {
 
   const s = status?.outbox;
 
+  /**
+   * Гараар ажиллуулах ажлууд.
+   *
+   * Бүгд ХУВААРЬТАЙ автоматаар ажилладаг (docs/10 §9) — эдгээр товч нь
+   * зөвхөн «хүлээхгүй яг одоо ажиллуулъя» гэсэн хурдасгуур.
+   */
+  const JOBS = [
+    {
+      key: 'loopy',
+      label: 'Loopy тулгах',
+      icon: RefreshCw,
+      run: runReconcile,
+    },
+    {
+      key: 'device-reconcile',
+      label: 'Терминал тулгах',
+      icon: RefreshCw,
+      run: () => runJob('device-reconcile'),
+    },
+    {
+      key: 'face-check',
+      label: 'Царай шалгах',
+      icon: ScanFace,
+      run: () => runJob('face-check'),
+    },
+    {
+      key: 'expire',
+      label: 'Хугацаа дуусгах',
+      icon: CalendarX,
+      run: () => runJob('expire'),
+    },
+    {
+      key: 'resync-all',
+      label: 'Бүгдийг дахин бичих',
+      icon: RotateCcw,
+      run: () => setConfirmResyncAll(true),
+    },
+  ];
+
   return (
     <div className="space-y-5">
       <PageHeader
         title="Синк"
         description="Терминал руу явж байгаа өөрчлөлтүүд"
       >
-        <Button variant="outline" onClick={runReconcile} disabled={reconciling}>
-          {reconciling ? (
-            <Loader2 className="size-4 animate-spin" />
-          ) : (
-            <RefreshCw className="size-4" />
-          )}
-          Loopy тулгах
-        </Button>
-        <Button variant="outline" onClick={() => runJob('device-reconcile')}>
-          <RefreshCw className="size-4" />
-          Терминал тулгах
-        </Button>
-        <Button variant="outline" onClick={() => runJob('face-check')}>
-          <RefreshCw className="size-4" />
-          Царай шалгах
-        </Button>
-        <Button variant="outline" onClick={() => runJob('expire')}>
-          Хугацаа дуусгах
-        </Button>
-        <Button variant="outline" onClick={() => setConfirmResyncAll(true)}>
-          <RotateCcw className="size-4" />
-          Бүгдийг дахин бичих
-        </Button>
+        {/* Таван товч нь `xl`-ээс доош багтахгүй — толгойн мөр хоёр эгнээ
+            болж, гарчигтай мөргөлддөг. Тиймээс нарийн дэлгэцэд ганц
+            унждаг цэс болгоно. */}
+        <div className="hidden items-center gap-2 xl:flex">
+          {JOBS.map((j) => (
+            <Button
+              key={j.key}
+              variant="outline"
+              onClick={() => j.run()}
+              disabled={busy !== null}
+            >
+              {busy === j.key ? (
+                <Loader2 className="size-4 animate-spin" />
+              ) : (
+                <j.icon className="size-4" />
+              )}
+              {j.label}
+            </Button>
+          ))}
+        </div>
+
+        <DropdownMenu>
+          <DropdownMenuTrigger
+            render={
+              <Button variant="outline" className="xl:hidden">
+                {busy ? (
+                  <Loader2 className="size-4 animate-spin" />
+                ) : (
+                  <Wrench className="size-4" />
+                )}
+                Үйлдэл
+                <ChevronDown className="size-4" />
+              </Button>
+            }
+          />
+          <DropdownMenuContent align="end" className="w-60">
+            <DropdownMenuGroup>
+              <DropdownMenuLabel>Гараар ажиллуулах</DropdownMenuLabel>
+              {JOBS.map((j) => (
+                <DropdownMenuItem
+                  key={j.key}
+                  onClick={() => j.run()}
+                  disabled={busy !== null}
+                >
+                  <j.icon className="size-4" />
+                  <span className="flex-1">{j.label}</span>
+                </DropdownMenuItem>
+              ))}
+            </DropdownMenuGroup>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </PageHeader>
 
       <AlertDialog open={confirmResyncAll} onOpenChange={setConfirmResyncAll}>
