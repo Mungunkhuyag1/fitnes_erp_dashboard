@@ -27,13 +27,18 @@ export function AuthShell({
           <BrandPattern />
 
           {/* Бүтэн лого — брэндийн хэсэг үргэлж ХАРАНХУЙ тул цагаан
-              бичвэртэй хувилбар. */}
+              бичвэртэй хувилбар.
+
+              ⚠ `self-start` ЗААВАЛ. Эцэг нь `flex flex-col` тул хүүхдүүд
+              хөндлөн тэнхлэгээр автоматаар СУНАНА (`align-items: stretch`).
+              `w-auto` нь түүнийг зогсоодоггүй — лого 880px өргөн болж
+              4:1 харьцаанаасаа 24:1 болж гажина. */}
           <Image
             src="/brand/wordmark-light.png"
             alt="WinFit Fitness"
             width={395}
             height={96}
-            className="relative h-9 w-auto"
+            className="relative h-8 w-auto self-start"
             priority
           />
 
