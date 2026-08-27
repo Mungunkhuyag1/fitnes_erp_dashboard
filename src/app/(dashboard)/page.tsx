@@ -40,7 +40,11 @@ interface Dash {
   };
   expiringSoon: { total: number; withoutCard: number };
   faceNotEnrolled: number;
-  lockers: { keysOut: number; overdueRentals: number };
+  lockers: {
+    keysOut: number;
+    overdueRentals: number;
+    expiringRentals: number;
+  };
   revenueToday: {
     cash: number;
     bonum: number;
@@ -183,6 +187,13 @@ export default function HomePage() {
       icon: KeyRound,
       label: `${d.lockers.overdueRentals} шүүгээний хугацаа хэтэрсэн`,
       hint: 'Түлхүүр буцаагдаагүй',
+      href: '/lockers',
+      danger: true,
+    },
+    d.lockers.expiringRentals && {
+      icon: KeyRound,
+      label: `${d.lockers.expiringRentals} шүүгээний түрээс 7 хоногт дуусна`,
+      hint: 'Wallet мэдэгдэл автоматаар очно',
       href: '/lockers',
       danger: false,
     },
