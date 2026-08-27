@@ -19,6 +19,7 @@ const LEAF: Record<string, string> = {
   reminders: 'Сануулга',
   connections: 'Холболт',
   'staff-users': 'Ажилтан',
+  diagnose: 'Оношилгоо',
 };
 
 /** Үндсэн цэсэнд байхгүй боловч нэртэй байх ёстой үндсэн замууд. */

@@ -1,14 +1,6 @@
 'use client';
 
-import {
-  CheckCircle2,
-  DoorOpen,
-  Loader2,
-  MonitorSmartphone,
-  RefreshCw,
-  ScanFace,
-  XCircle,
-} from 'lucide-react';
+import { CheckCircle2, DoorOpen, Loader2, MonitorSmartphone, RefreshCw, ScanFace, Stethoscope, XCircle } from 'lucide-react';
 import { useState } from 'react';
 import { toast } from 'sonner';
 import { ChartCard } from '@/components/chart-card';
@@ -26,6 +18,7 @@ import {
   CardTitle,
 } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
+import Link from 'next/link';
 import { useApi } from '@/hooks/use-api';
 import { api } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
@@ -145,6 +138,11 @@ export default function TerminalPage() {
         description="Царай таних төхөөрөмжийн ажиллагаа"
       >
         <div className="flex flex-wrap items-center gap-2">
+          {/* Фитнест очиход хэрэгтэй — ISAPI-гийн бодит хариуг харах. */}
+          <Button variant="outline" nativeButton={false} render={<Link href="/terminal/diagnose" />}>
+            <Stethoscope className="size-4" />
+            Оношилгоо
+          </Button>
           <div className="bg-muted flex rounded-lg p-0.5">
             {RANGES.map((r) => (
               <Button
