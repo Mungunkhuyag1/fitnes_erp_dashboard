@@ -44,6 +44,7 @@ interface Dash {
     keysOut: number;
     overdueRentals: number;
     expiringRentals: number;
+    staleDaily: number;
   };
   revenueToday: {
     cash: number;
@@ -187,6 +188,15 @@ export default function HomePage() {
       icon: KeyRound,
       label: `${d.lockers.overdueRentals} шүүгээний хугацаа хэтэрсэн`,
       hint: 'Түлхүүр буцаагдаагүй',
+      href: '/lockers',
+      danger: true,
+    },
+    d.lockers.staleDaily && {
+      icon: KeyRound,
+      label: `${d.lockers.staleDaily} өдрийн түлхүүр буцаагдаагүй`,
+      // ⚠ Гишүүн аваад явсныг БАТАЛДАГГҮЙ — ресепшн бүртгээгүй ч байж
+      // болно. Тиймээс автоматаар мэдэгдэл явуулахгүй, ажилтан шалгана.
+      hint: '6+ цаг гарсан — самбараас шалгаж, шаардвал сануулга илгээнэ',
       href: '/lockers',
       danger: true,
     },

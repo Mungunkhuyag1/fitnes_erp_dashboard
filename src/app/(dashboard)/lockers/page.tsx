@@ -3,6 +3,7 @@
 import { KeyRound, Loader2, Plus, RotateCcw } from "lucide-react";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
+import { LockerHistory } from "@/components/locker-history";
 import { LockerIssueDialog } from "@/components/locker-issue-dialog";
 import { PageHeader } from "@/components/page-header";
 import { StatCard } from "@/components/stat-card";
@@ -45,6 +46,8 @@ interface LockerCell {
   dueAt: string | null;
   note: string | null;
 }
+
+type View = "board" | "history";
 
 interface Board {
   zones: { zone: string; total: number; free: number; items: LockerCell[] }[];
@@ -153,6 +156,7 @@ export default function LockersPage() {
    * өрөө рүү унана. `useEffect` доторх setState шаардлагагүй.
    */
   const [zone, setZone] = useState("");
+  const [view, setView] = useState<View>("board");
   const [issueTarget, setIssueTarget] = useState<{
     zone: string;
     number: number;
@@ -268,6 +272,20 @@ export default function LockersPage() {
         />
       </div>
 
+      {/* Самбар нь ЗӨВХӨН одоогийн байдал. Маргаан гарахад («би буцаасан»
+          / «үгүй») хэн хэзээ авч, хэзээ буцаасныг харах газар хэрэгтэй —
+          backend-д эндпойнт байсан ч дэлгэц байгаагүй. */}
+      <Tabs value={view} onValueChange={(v) => setView(String(v) as View)}>
+        <TabsList>
+          <TabsTrigger value="board">Самбар</TabsTrigger>
+          <TabsTrigger value="history">Түүх</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="history" className="mt-4">
+          <LockerHistory />
+        </TabsContent>
+
+        <TabsContent value="board" className="mt-4 space-y-4">
       {loading && !board ? (
         <Skeleton className="h-72" />
       ) : (
@@ -411,6 +429,8 @@ export default function LockersPage() {
           ))}
         </Tabs>
       )}
+        </TabsContent>
+      </Tabs>
 
       <LockerIssueDialog
         /* Өөр шүүгээ дарж орж ирэхэд диалог дахин mount болж, анхны утга
