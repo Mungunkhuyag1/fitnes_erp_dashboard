@@ -1,6 +1,7 @@
 'use client';
 
-import { CheckCircle2, Dumbbell, ExternalLink, Loader2 } from 'lucide-react';
+import { CheckCircle2, ExternalLink, Loader2 } from 'lucide-react';
+import Image from 'next/image';
 import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -24,13 +25,34 @@ export interface PendingInvoice {
 }
 
 /** Хуудасны толгой — фитнесийн нэр. */
+/**
+ * Нийтэд харагдах төлбөрийн хуудасны толгой.
+ *
+ * ЯАГААД ЛОГО ХЭРЭГТЭЙ ВЭ: гишүүн банкны апп руу шилжихийн өмнө «зөв
+ * газар байна уу» гэдгээ хормын зуур батлах ёстой. Ерөнхий дүрсээс
+ * илүү брэндийн тэмдэг итгэл төрүүлнэ.
+ *
+ * ⚠ Тэмдгийг ашиглана, БҮТЭН wordmark-ыг биш: фитнесийн нэр нь
+ * тохиргооноос ирдэг (`gym_name`) тул зурган дээрх «WIN FIT» бичигтэй
+ * зөрөх эрсдэлтэй.
+ */
 export function PayHeader({ gymName }: { gymName: string }) {
   return (
-    <div className="flex items-center gap-2.5">
-      <div className="bg-primary text-primary-foreground flex size-9 items-center justify-center rounded-lg">
-        <Dumbbell className="size-4.5" />
+    <div className="flex flex-col items-center gap-3 text-center">
+      <div className="flex size-14 items-center justify-center rounded-2xl bg-neutral-950 shadow-sm">
+        <Image
+          src="/brand/mark.png"
+          alt=""
+          width={56}
+          height={56}
+          className="size-10"
+          priority
+        />
       </div>
-      <span className="text-lg font-semibold tracking-tight">{gymName}</span>
+      <div>
+        <p className="text-xl font-semibold tracking-tight">{gymName}</p>
+        <p className="text-muted-foreground text-xs">Гишүүнчлэлийн төлбөр</p>
+      </div>
     </div>
   );
 }

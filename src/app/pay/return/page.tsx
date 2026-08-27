@@ -14,7 +14,7 @@ import { PayHeader } from '@/components/pay-flow';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { api } from '@/lib/api';
-import { money } from '@/lib/format';
+import { date, dateTime, money } from '@/lib/format';
 
 interface InvoiceStatus {
   status: 'pending' | 'paid' | 'expired' | 'cancelled';
@@ -23,6 +23,10 @@ interface InvoiceStatus {
   days: number;
   amount: number;
   expiresAt: string;
+  /** Далдалсан — энэ хуудас нэвтрэлтгүй. */
+  memberName: string | null;
+  /** Зөвхөн төлөгдсөн үед: эрх ХЭЗЭЭ хүртэл сунгагдсан. */
+  accessEndsAt: string | null;
 }
 
 /** Хэдэн секунд тутам шалгах. */
@@ -112,8 +116,18 @@ function ReturnInner() {
         tone="ok"
         icon={<CheckCircle2 className="size-10 text-emerald-500" />}
         title="Төлбөр амжилттай"
-        text={`${inv.packageName} — ${inv.days} хоног нэмэгдлээ. Терминал дээр шууд нэвтэрч болно.`}
+        text="Терминал дээр шууд нэвтэрч болно."
         amount={inv.amount}
+        rows={[
+          { label: 'Гишүүн', value: inv.memberName ?? '—' },
+          { label: 'Багц', value: `${inv.packageName} · ${inv.days} хоног` },
+          {
+            label: 'Эрх дуусах',
+            value: inv.accessEndsAt ? date(inv.accessEndsAt) : '—',
+            strong: true,
+          },
+          { label: 'Төлсөн', value: inv.paidAt ? dateTime(inv.paidAt) : '—' },
+        ]}
       />
     );
   }
@@ -130,6 +144,10 @@ function ReturnInner() {
         }
         text="Төлбөр бүртгэгдээгүй. Картаа дахин нээж дахин оролдоно уу."
         amount={inv.amount}
+        rows={[
+          { label: 'Гишүүн', value: inv.memberName ?? '—' },
+          { label: 'Багц', value: `${inv.packageName} · ${inv.days} хоног` },
+        ]}
       />
     );
   }
@@ -156,9 +174,25 @@ function ReturnInner() {
           : 'Банкнаас хариу ирэхийг хүлээж байна. Энэ хуудсыг хаахгүй байна уу.'
       }
       amount={inv?.amount}
-      sub={inv?.packageName}
+      rows={
+        inv
+          ? [
+              { label: 'Гишүүн', value: inv.memberName ?? '—' },
+              {
+                label: 'Багц',
+                value: `${inv.packageName} · ${inv.days} хоног`,
+              },
+            ]
+          : undefined
+      }
     />
   );
+}
+
+interface DetailRow {
+  label: string;
+  value: string;
+  strong?: boolean;
 }
 
 function State({
@@ -166,14 +200,14 @@ function State({
   title,
   text,
   amount,
-  sub,
+  rows,
   tone,
 }: {
   icon: React.ReactNode;
   title: string;
   text: string;
   amount?: number;
-  sub?: string;
+  rows?: DetailRow[];
   tone?: 'ok' | 'bad';
 }) {
   return (
@@ -190,7 +224,6 @@ function State({
         {icon}
         <div>
           <p className="text-lg font-semibold">{title}</p>
-          {sub && <p className="text-muted-foreground mt-0.5 text-sm">{sub}</p>}
           {amount !== undefined && (
             <p className="mt-1 text-2xl font-semibold tabular-nums">
               {money(amount)}
@@ -198,6 +231,25 @@ function State({
           )}
           <p className="text-muted-foreground mt-2 text-sm">{text}</p>
         </div>
+
+        {rows && rows.length > 0 && (
+          <dl className="mt-1 w-full space-y-2 border-t pt-4 text-left">
+            {rows.map((r) => (
+              <div key={r.label} className="flex justify-between gap-4">
+                <dt className="text-muted-foreground text-sm">{r.label}</dt>
+                <dd
+                  className={
+                    r.strong
+                      ? 'text-sm font-semibold tabular-nums'
+                      : 'text-sm tabular-nums'
+                  }
+                >
+                  {r.value}
+                </dd>
+              </div>
+            ))}
+          </dl>
+        )}
         <Button
           variant="outline"
           className="mt-2"
