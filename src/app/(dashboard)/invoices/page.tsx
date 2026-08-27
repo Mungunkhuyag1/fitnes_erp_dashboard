@@ -4,6 +4,13 @@ import { Search } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useMemo, useState } from 'react';
 import { DataTable, type Column } from '@/components/data-table';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import { FilterSelect, type FilterOption } from '@/components/filter-select';
 import { PageHeader } from '@/components/page-header';
 import { StatCard } from '@/components/stat-card';
@@ -16,6 +23,17 @@ import { qs, type Page } from '@/lib/api';
 import { dateTime, money, relative } from '@/lib/format';
 import { cn } from '@/lib/utils';
 
+/**
+ * «8 мин өмнө» — зөвхөн ХУГАЦААНЫ зөрүүнд «өмнө» залгана.
+ *
+ * `relative()` нь «Дөнгөж сая» эсвэл хуучин бол бүтэн огноо ч буцаадаг;
+ * тэдэнд «өмнө» залгавал «Дөнгөж сая өмнө» гэсэн утгагүй бичиг гарна.
+ */
+function ago(value: string | null): string {
+  const r = relative(value);
+  return /^\d+ (мин|цаг|хоног)$/.test(r) ? `${r} өмнө` : r;
+}
+
 interface InvoiceRow {
   id: string;
   memberId: string;
@@ -27,10 +45,27 @@ interface InvoiceRow {
   amount: number;
   status: 'pending' | 'paid' | 'expired' | 'cancelled';
   provider: string;
+  transactionId: string;
   payUrl: string | null;
   paidAt: string | null;
   expiresAt: string;
   createdAt: string;
+}
+
+/** Дэлгэрэнгүй цонхны нэг мөр. */
+function Row({
+  label,
+  children,
+}: {
+  label: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="flex items-start justify-between gap-4 border-b pb-2 last:border-0">
+      <span className="text-muted-foreground shrink-0 text-sm">{label}</span>
+      <span className="min-w-0 text-right text-sm">{children}</span>
+    </div>
+  );
 }
 
 interface PackageRow {
@@ -96,6 +131,7 @@ function Countdown({ expiresAt }: { expiresAt: string }) {
 
 export default function InvoicesPage() {
   const router = useRouter();
+  const [detail, setDetail] = useState<InvoiceRow | null>(null);
   const [search, setSearch] = useState('');
   const [status, setStatus] = useState('');
   const [packageId, setPackageId] = useState('');
@@ -147,11 +183,14 @@ export default function InvoicesPage() {
       cell: (i) => (
         <div>
           <span className="font-medium">{i.memberName ?? '—'}</span>
-          {i.memberNo !== null && (
+          {/* ⚠ `!== null` гэж шалгаж БОЛОХГҮЙ: талбар огт ирээгүй үед
+              `undefined` болох ба тэр шалгалтыг давж «№» гэж хоосон
+              хэвлэдэг байв. */}
+          {i.memberNo ? (
             <span className="text-muted-foreground ml-1.5 text-xs">
               №{i.memberNo}
             </span>
-          )}
+          ) : null}
         </div>
       ),
     },
@@ -190,15 +229,17 @@ export default function InvoicesPage() {
     },
     {
       key: 'left',
-      header: 'Үлдсэн',
+      header: 'Үлдсэн хугацаа',
       cell: (i) =>
         i.status === 'pending' ? (
           <span className="text-sm">
             <Countdown expiresAt={i.expiresAt} />
           </span>
         ) : i.paidAt ? (
+          // Төлөгдсөн бол «үлдсэн хугацаа» гэж юу ч байхгүй — хэзээ
+          // төлөгдсөнийг харуулах нь илүү хэрэгтэй.
           <span className="text-muted-foreground text-xs">
-            Төлсөн {relative(i.paidAt)}
+            {ago(i.paidAt)}
           </span>
         ) : (
           <span className="text-muted-foreground text-xs">—</span>
@@ -306,8 +347,84 @@ export default function InvoicesPage() {
         rowKey={(i) => i.id}
         emptyText="Нэхэмжлэх алга"
         onPageChange={setPage}
-        onRowClick={(i) => router.push(`/members/${i.memberId}`)}
+        onRowClick={setDetail}
       />
+
+      <Dialog open={!!detail} onOpenChange={(v) => !v && setDetail(null)}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Гүйлгээний дэлгэрэнгүй</DialogTitle>
+            <DialogDescription>
+              {detail?.packageName} · {detail && money(detail.amount)}
+            </DialogDescription>
+          </DialogHeader>
+
+          {detail && (
+            <div className="space-y-3">
+              <Row label="Төлөв">
+                <span
+                  className={cn(
+                    'inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium',
+                    STATUS[detail.status].tone,
+                  )}
+                >
+                  {STATUS[detail.status].label}
+                </span>
+              </Row>
+              <Row label="Гишүүн">
+                <button
+                  className="text-primary hover:underline"
+                  onClick={() => router.push(`/members/${detail.memberId}`)}
+                >
+                  {detail.memberName ?? '—'}
+                  {detail.memberNo ? ` №${detail.memberNo}` : ''}
+                </button>
+              </Row>
+              <Row label="Багц">
+                {detail.packageName} · {detail.days} хоног
+              </Row>
+              <Row label="Дүн">
+                <span className="font-medium tabular-nums">
+                  {money(detail.amount)}
+                </span>
+              </Row>
+              <Row label="Гүйлгээний дугаар">
+                {/* Bonum-тай тулгахад ЭНЭ дугаараар хайна. */}
+                <code className="bg-muted rounded px-1.5 py-0.5 text-xs break-all">
+                  {detail.transactionId}
+                </code>
+              </Row>
+              <Row label="Суваг">{detail.provider}</Row>
+              <Row label="Үүссэн">{dateTime(detail.createdAt)}</Row>
+              <Row label="Хугацаа дуусах">{dateTime(detail.expiresAt)}</Row>
+              <Row label="Төлсөн">
+                {detail.paidAt ? (
+                  <>
+                    {dateTime(detail.paidAt)}
+                    <span className="text-muted-foreground ml-1.5 text-xs">
+                      {ago(detail.paidAt)}
+                    </span>
+                  </>
+                ) : (
+                  '—'
+                )}
+              </Row>
+              {detail.payUrl && detail.status === 'pending' && (
+                <Row label="Төлбөрийн холбоос">
+                  <a
+                    href={detail.payUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-primary text-xs break-all hover:underline"
+                  >
+                    {detail.payUrl}
+                  </a>
+                </Row>
+              )}
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

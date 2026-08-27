@@ -60,12 +60,14 @@ export default function PayByPhonePage() {
     setBusy(true);
     setError(null);
     try {
-      setInvoice(
-        await api.anon.post<PendingInvoice>('/public/invoices', {
-          phone,
-          packageId,
-        }),
-      );
+      const inv = await api.anon.post<PendingInvoice>('/public/invoices', {
+        phone,
+        packageId,
+      });
+      setInvoice(inv);
+      // ★ Bonum-ын хуудас руу ШУУД шилжинэ — нэмэлт дарах алхам хэрэггүй.
+      // `payUrl` ирээгүй бол хүлээлтийн дэлгэц дээрх товч нөөц болж үлдэнэ.
+      if (inv.payUrl) window.location.href = inv.payUrl;
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Алдаа гарлаа');
     } finally {

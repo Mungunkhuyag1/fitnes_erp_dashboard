@@ -47,12 +47,19 @@ export default function PayByTokenPage() {
     setBusy(true);
     setPayError(null);
     try {
-      setInvoice(
-        await api.anon.post<PendingInvoice>('/public/invoices', {
-          token,
-          packageId,
-        }),
-      );
+      const inv = await api.anon.post<PendingInvoice>('/public/invoices', {
+        token,
+        packageId,
+      });
+      setInvoice(inv);
+      // ★ Bonum-ын хуудас руу ШУУД шилжинэ.
+      //
+      // Урьд нь «Банкны аппаар төлөх» товч харуулдаг байсан — нэмэлт нэг
+      // дарах алхам. Гишүүн аль хэдийн «төлөх» гэж дарсан тул хүсэл нь
+      // тодорхой. `payUrl` ирээгүй бол (Bonum унасан) доорх товч нөөц
+      // болж үлдэнэ.
+      if (inv.payUrl) window.location.href = inv.payUrl;
+
     } catch (err) {
       setPayError(err instanceof Error ? err.message : 'Алдаа гарлаа');
     } finally {
