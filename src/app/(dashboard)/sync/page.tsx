@@ -75,6 +75,8 @@ const TOPIC_LABEL: Record<string, string> = {
   'hik.userUpsert': 'Терминалд бичих',
   'hik.setValidity': 'Хугацаа шинэчлэх',
   'hik.userDelete': 'Терминалаас устгах',
+  // Гишүүнгүй хэрэглэгчийг дугаараар нь устгах (тулгалтын `extras`).
+  'hik.userDeleteNo': 'Терминалаас устгах (гишүүнгүй)',
   'loopy.allowPhone': 'Дугаарыг Loopy-д нэмэх',
   'loopy.disallowPhone': 'Дугаарыг Loopy-гоос хасах',
   'loopy.extend': 'Картын хугацаа сунгах',
