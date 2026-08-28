@@ -33,6 +33,14 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuGroup,
@@ -43,7 +51,6 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { api } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
-import { date } from "@/lib/format";
 
 interface FieldDiff {
   field: string;
@@ -57,22 +64,23 @@ interface DriftRow {
   fields: FieldDiff[];
 }
 
-interface Extra {
-  employeeNo: number;
-  name: string;
-  end: string | null;
-}
-
 interface Diff {
   ran: boolean;
   reason?: string;
   deviceTotal: number;
   winfitTotal: number;
-  missing: { employeeNo: number; name: string }[];
+  missing: DriftRow[];
   drift: DriftRow[];
   nameDiff: DriftRow[];
-  extras: Extra[];
+  extras: DriftRow[];
   queued?: number;
+}
+
+/** Дэлгэрэнгүй цонхонд аль үйлдэл боломжтойг ангилал шийднэ. */
+interface Detail {
+  row: DriftRow;
+  push: boolean;
+  remove: boolean;
 }
 
 /** Хийхээр сонгосон үйлдэл — баталгаажуулах цонхонд дамжина. */
@@ -97,6 +105,7 @@ export function DeviceAuditCard() {
   const [diff, setDiff] = useState<Diff | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
   const [pending, setPending] = useState<Pending | null>(null);
+  const [detail, setDetail] = useState<Detail | null>(null);
 
   async function load(fix: boolean) {
     setBusy(fix ? "fix" : "diff");
@@ -286,7 +295,13 @@ export function DeviceAuditCard() {
               hint="WinFit-д бүртгэлтэй ч терминал дээр байхгүй — эдгээр хүн орж чадахгүй."
             >
               {diff.missing.map((r) => (
-                <Row key={r.employeeNo} employeeNo={r.employeeNo} name={r.name}>
+                <Row
+                  key={r.employeeNo}
+                  row={r}
+                  onOpen={() =>
+                    setDetail({ row: r, push: true, remove: false })
+                  }
+                >
                   <RowMenu
                     employeeNo={r.employeeNo}
                     name={r.name}
@@ -304,8 +319,13 @@ export function DeviceAuditCard() {
               hint="Хоёр талд байгаа ч нэвтрэлтэд нөлөөлөх утга зөрсөн."
             >
               {diff.drift.map((r) => (
-                <Row key={r.employeeNo} employeeNo={r.employeeNo} name={r.name}>
-                  <Fields fields={r.fields} />
+                <Row
+                  key={r.employeeNo}
+                  row={r}
+                  onOpen={() =>
+                    setDetail({ row: r, push: true, remove: false })
+                  }
+                >
                   <RowMenu
                     employeeNo={r.employeeNo}
                     name={r.name}
@@ -324,12 +344,13 @@ export function DeviceAuditCard() {
               hint="Терминал дээр байгаа ч WinFit-д бүртгэлгүй. Ажилтан, зочин байж болзошгүй тул автоматаар устгадаггүй — мөр бүрийг тусад нь шийднэ."
             >
               {diff.extras.map((r) => (
-                <Row key={r.employeeNo} employeeNo={r.employeeNo} name={r.name}>
-                  {r.end && (
-                    <span className="text-muted-foreground shrink-0">
-                      {date(r.end)}
-                    </span>
-                  )}
+                <Row
+                  key={r.employeeNo}
+                  row={r}
+                  onOpen={() =>
+                    setDetail({ row: r, push: false, remove: true })
+                  }
+                >
                   <RowMenu
                     employeeNo={r.employeeNo}
                     name={r.name}
@@ -348,8 +369,13 @@ export function DeviceAuditCard() {
               collapsed
             >
               {diff.nameDiff.map((r) => (
-                <Row key={r.employeeNo} employeeNo={r.employeeNo} name={r.name}>
-                  <Fields fields={r.fields} />
+                <Row
+                  key={r.employeeNo}
+                  row={r}
+                  onOpen={() =>
+                    setDetail({ row: r, push: true, remove: false })
+                  }
+                >
                   <RowMenu
                     employeeNo={r.employeeNo}
                     name={r.name}
@@ -362,6 +388,72 @@ export function DeviceAuditCard() {
           </>
         )}
       </CardContent>
+
+      {/* ── Дэлгэрэнгүй — аль тал алины утга нь ЭРГЭЛЗЭЭГҮЙ ── */}
+      <Dialog
+        open={detail !== null}
+        onOpenChange={(o) => !o && setDetail(null)}
+      >
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>
+              №{detail?.row.employeeNo} {detail?.row.name}
+            </DialogTitle>
+            <DialogDescription>
+              WinFit болон терминал дээрх утгыг зэрэгцүүлэв. Зөрсөн утгыг
+              улаанаар тэмдэглэв.
+            </DialogDescription>
+          </DialogHeader>
+
+          {detail && <FieldTable fields={detail.row.fields} />}
+
+          <DialogFooter className="flex-col gap-2 sm:flex-row">
+            {detail?.push && can("manager") && (
+              <Button
+                variant="outline"
+                disabled={busy !== null}
+                onClick={() => {
+                  const no = detail.row.employeeNo;
+                  setDetail(null);
+                  act("push", no);
+                }}
+              >
+                <Upload className="size-4" />
+                WinFit → терминал
+              </Button>
+            )}
+            {can("admin") && detail && (
+              <Button
+                variant="outline"
+                disabled={busy !== null}
+                onClick={() => {
+                  const { employeeNo, name } = detail.row;
+                  setDetail(null);
+                  setPending({ kind: "pull", employeeNo, name });
+                }}
+              >
+                <Download className="size-4" />
+                Терминал → WinFit
+              </Button>
+            )}
+            {detail?.remove && can("admin") && (
+              <Button
+                variant="outline"
+                className="text-destructive"
+                disabled={busy !== null}
+                onClick={() => {
+                  const { employeeNo, name } = detail.row;
+                  setDetail(null);
+                  setPending({ kind: "remove", employeeNo, name });
+                }}
+              >
+                <Trash2 className="size-4" />
+                Терминалаас устгах
+              </Button>
+            )}
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <AlertDialog
         open={pending !== null}
@@ -487,37 +579,79 @@ function Section({
   );
 }
 
+/**
+ * Нэг мөр — дарвал дэлгэрэнгүй цонх нээнэ.
+ *
+ * ⚠ Утгыг МӨРӨНД харуулахгүй. `2026-05-25 ↔ 2026-08-23` гэж бичихэд
+ * аль тал нь WinFit, аль нь терминалынх болох нь мэдэгдэхгүй. Мөрөнд
+ * зөвхөн ЯМАР талбар зөрсөнийг нэрлээд, утгыг нь толгойтой хүснэгтэд
+ * харуулна.
+ */
 function Row({
-  employeeNo,
-  name,
+  row,
+  onOpen,
   children,
 }: {
-  employeeNo: number;
-  name: string;
+  row: DriftRow;
+  onOpen: () => void;
   children: React.ReactNode;
 }) {
   return (
-    <li className="flex items-center gap-2 py-0.5">
-      <span className="text-muted-foreground shrink-0 font-mono">
-        №{employeeNo}
-      </span>
-      <span className="truncate">{name}</span>
-      <span className="ml-auto flex items-center gap-2">{children}</span>
+    <li className="flex items-center gap-2">
+      <button
+        type="button"
+        onClick={onOpen}
+        className="hover:bg-muted/50 flex min-w-0 flex-1 items-center gap-2 rounded px-1 py-1 text-left"
+      >
+        <span className="text-muted-foreground shrink-0 font-mono">
+          №{row.employeeNo}
+        </span>
+        <span className="truncate">{row.name}</span>
+        <span className="text-muted-foreground ml-auto shrink-0 pl-3">
+          {row.fields
+            .filter((f) => f.winfit !== "—" && f.device !== "—")
+            .map((f) => f.field)
+            .join(" · ") || "Дэлгэрэнгүй"}
+        </span>
+      </button>
+      {children}
     </li>
   );
 }
 
-/** Зөрсөн талбарууд — хоёр талын утгыг ЗЭРЭГ харуулна. */
-function Fields({ fields }: { fields: FieldDiff[] }) {
+/** Талбарын зөрүү — толгойтой хүснэгт, аль тал алины нь эргэлзээгүй. */
+function FieldTable({ fields }: { fields: FieldDiff[] }) {
   return (
-    <span className="text-muted-foreground flex flex-wrap justify-end gap-x-3 gap-y-0.5 text-right">
-      {fields.map((f) => (
-        <span key={f.field}>
-          {f.field}: <span className="text-foreground">{f.winfit}</span>
-          <span className="mx-1">↔</span>
-          <span className="text-foreground">{f.device}</span>
-        </span>
-      ))}
-    </span>
+    <div className="overflow-x-auto rounded-lg border">
+      <table className="w-full text-sm">
+        <thead className="bg-muted/50 text-muted-foreground text-xs">
+          <tr>
+            <th className="px-3 py-2 text-left font-medium">Талбар</th>
+            <th className="px-3 py-2 text-left font-medium">WinFit</th>
+            <th className="px-3 py-2 text-left font-medium">Терминал</th>
+          </tr>
+        </thead>
+        <tbody>
+          {fields.map((f) => {
+            const same = f.winfit === f.device;
+            return (
+              <tr key={f.field} className="border-t">
+                <td className="text-muted-foreground px-3 py-2">{f.field}</td>
+                <td className="px-3 py-2 font-medium">{f.winfit}</td>
+                <td
+                  className={
+                    same
+                      ? "px-3 py-2 font-medium"
+                      : "text-destructive px-3 py-2 font-medium"
+                  }
+                >
+                  {f.device}
+                </td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+    </div>
   );
 }
