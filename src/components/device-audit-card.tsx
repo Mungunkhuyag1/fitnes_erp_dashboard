@@ -1,8 +1,18 @@
-'use client';
+"use client";
 
-import { AlertTriangle, CheckCircle2, Loader2, ScanSearch, Trash2 } from 'lucide-react';
-import { useState } from 'react';
-import { toast } from 'sonner';
+import {
+  AlertTriangle,
+  ArrowLeftRight,
+  CheckCircle2,
+  Download,
+  Loader2,
+  MoreHorizontal,
+  ScanSearch,
+  Trash2,
+  Upload,
+} from "lucide-react";
+import { useState } from "react";
+import { toast } from "sonner";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -12,8 +22,8 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-} from '@/components/ui/alert-dialog';
-import { Button } from '@/components/ui/button';
+} from "@/components/ui/alert-dialog";
+import { Button } from "@/components/ui/button";
 import {
   Card,
   CardAction,
@@ -21,10 +31,31 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
-} from '@/components/ui/card';
-import { api } from '@/lib/api';
-import { useAuth } from '@/lib/auth';
-import { date } from '@/lib/format';
+} from "@/components/ui/card";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuGroup,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { api } from "@/lib/api";
+import { useAuth } from "@/lib/auth";
+import { date } from "@/lib/format";
+
+interface FieldDiff {
+  field: string;
+  winfit: string;
+  device: string;
+}
+
+interface DriftRow {
+  employeeNo: number;
+  name: string;
+  fields: FieldDiff[];
+}
 
 interface Extra {
   employeeNo: number;
@@ -38,80 +69,166 @@ interface Diff {
   deviceTotal: number;
   winfitTotal: number;
   missing: { employeeNo: number; name: string }[];
-  drift: { employeeNo: number; name: string; reason: string }[];
-  nameDiff: { employeeNo: number; winfit: string; device: string }[];
+  drift: DriftRow[];
+  nameDiff: DriftRow[];
   extras: Extra[];
   queued?: number;
+}
+
+/** Хийхээр сонгосон үйлдэл — баталгаажуулах цонхонд дамжина. */
+interface Pending {
+  kind: "pull" | "remove";
+  employeeNo: number;
+  name: string;
 }
 
 /**
  * Терминал ↔ WinFit-ийн БҮРЭН тулгалт.
  *
- * «Терминал тулгах» товчноос ЯЛГААТАЙ: тэр нь WinFit өөрөө «би энд
- * унасан» гэж мэдэж байгаа гишүүдийг л засдаг. Энэ нь терминал дээрх
- * бодит жагсаалтыг татаж, WinFit мэдэхгүй зөрүүг олно — reset хийсэн,
- * гараар засварласан, гараар хэрэглэгч нэмсэн тохиолдол.
+ * ★ ЯАГААД МӨР ТУС БҮРД ҮЙЛДЭЛ ВЭ
+ *
+ * Зөрүү бүр өөр шалтгаантай: нэг нь ажилтан, нөгөө нь бүртгэл алдагдсан
+ * гишүүн, гурав дахь нь терминал reset хийгдсэний үлдэц. Бөөнөөр
+ * «бүгдийг устга» гэвэл ажилтан тэр ялгааг харахгүйгээр шийднэ.
+ * Тиймээс мөр бүр дээр ЧИГЛЭЛИЙГ өөрөө сонгоно.
  */
 export function DeviceAuditCard() {
   const { can } = useAuth();
   const [diff, setDiff] = useState<Diff | null>(null);
-  const [busy, setBusy] = useState<'diff' | 'fix' | 'remove' | null>(null);
-  const [confirmRemove, setConfirmRemove] = useState(false);
+  const [busy, setBusy] = useState<string | null>(null);
+  const [pending, setPending] = useState<Pending | null>(null);
 
   async function load(fix: boolean) {
-    setBusy(fix ? 'fix' : 'diff');
+    setBusy(fix ? "fix" : "diff");
     try {
       const r = fix
-        ? await api.post<Diff>('/sync/run/device-audit')
-        : await api.get<Diff>('/sync/run/device-audit/diff');
+        ? await api.post<Diff>("/sync/run/device-audit")
+        : await api.get<Diff>("/sync/run/device-audit/diff");
       setDiff(r);
-      if (!r.ran) toast.warning(r.reason ?? 'Ажиллуулах боломжгүй');
+      if (!r.ran) toast.warning(r.reason ?? "Ажиллуулах боломжгүй");
       else if (fix) {
         toast.success(
           r.queued
-            ? `${r.queued} гишүүн дахин бичихээр дараалалд орлоо`
-            : 'Зөрүү олдсонгүй',
+            ? `${r.queued} гишүүн терминал руу бичихээр дараалалд орлоо`
+            : "Нэвтрэлтэд нөлөөлөх зөрүү алга",
         );
       }
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'Алдаа гарлаа');
+      toast.error(e instanceof Error ? e.message : "Алдаа гарлаа");
     } finally {
       setBusy(null);
     }
   }
 
-  async function removeExtras() {
-    if (!diff?.extras.length) return;
-    setBusy('remove');
+  async function act(kind: "push" | "pull" | "remove", employeeNo: number) {
+    setBusy(`${kind}:${employeeNo}`);
     try {
-      const r = await api.post<{ queued: number }>(
-        '/sync/run/device-audit/remove-extras',
-        { employeeNos: diff.extras.map((e) => e.employeeNo) },
+      await api.post(`/sync/run/device-audit/${kind}`, { employeeNo });
+      toast.success(
+        kind === "push"
+          ? `№${employeeNo} терминал руу бичихээр дараалалд орлоо`
+          : kind === "pull"
+            ? `№${employeeNo} WinFit рүү авлаа`
+            : `№${employeeNo} терминалаас устгахаар дараалалд орлоо`,
       );
-      toast.success(`${r.queued} хэрэглэгч устгахаар дараалалд орлоо`);
-      setConfirmRemove(false);
+      setPending(null);
       await load(false);
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'Устгаж чадсангүй');
+      toast.error(e instanceof Error ? e.message : "Алдаа гарлаа");
     } finally {
       setBusy(null);
     }
+  }
+
+  /** Мөрийн `...` цэс — аль үйлдэл боломжтой нь ангиллаас хамаарна. */
+  function RowMenu({
+    employeeNo,
+    name,
+    push,
+    remove,
+  }: {
+    employeeNo: number;
+    name: string;
+    push: boolean;
+    remove: boolean;
+  }) {
+    const running = busy?.endsWith(`:${employeeNo}`);
+    return (
+      <DropdownMenu>
+        <DropdownMenuTrigger
+          render={
+            <Button
+              size="icon"
+              variant="ghost"
+              className="size-7 shrink-0"
+              disabled={busy !== null}
+            >
+              {running ? (
+                <Loader2 className="size-3.5 animate-spin" />
+              ) : (
+                <MoreHorizontal className="size-3.5" />
+              )}
+            </Button>
+          }
+        />
+        <DropdownMenuContent align="end" className="w-64">
+          {/* ⚠ Base UI-д `Label` нь заавал `Group` дотор байх ёстой —
+              эс бөгөөс «MenuGroupContext is missing» гэж УНАНА. Энэ нь
+              зөвхөн ажиллах үед илэрдэг тул tsc/build барихгүй. */}
+          <DropdownMenuGroup>
+            <DropdownMenuLabel>
+              №{employeeNo} {name}
+            </DropdownMenuLabel>
+          </DropdownMenuGroup>
+          <DropdownMenuSeparator />
+          <DropdownMenuGroup>
+            {push && can("manager") && (
+              <DropdownMenuItem onClick={() => act("push", employeeNo)}>
+                <Upload className="size-4" />
+                WinFit → терминал
+              </DropdownMenuItem>
+            )}
+            {can("admin") && (
+              <DropdownMenuItem
+                onClick={() => setPending({ kind: "pull", employeeNo, name })}
+              >
+                <Download className="size-4" />
+                Терминал → WinFit
+              </DropdownMenuItem>
+            )}
+            {remove && can("admin") && (
+              <DropdownMenuItem
+                variant="destructive"
+                onClick={() => setPending({ kind: "remove", employeeNo, name })}
+              >
+                <Trash2 className="size-4" />
+                Терминалаас устгах
+              </DropdownMenuItem>
+            )}
+          </DropdownMenuGroup>
+        </DropdownMenuContent>
+      </DropdownMenu>
+    );
   }
 
   const clean =
-    diff?.ran && !diff.missing.length && !diff.drift.length && !diff.extras.length;
+    diff?.ran &&
+    !diff.missing.length &&
+    !diff.drift.length &&
+    !diff.extras.length;
 
   return (
     <Card>
       <CardHeader>
         <CardTitle className="text-sm">Терминалын бүрэн тулгалт</CardTitle>
         <CardDescription>
-          Терминал дээрх бүх хэрэглэгчийг татаж WinFit-тэй харьцуулна.
-          Өдөр бүр 02:30-д автоматаар ажиллана.
+          Терминал дээрх бүх хэрэглэгчийг татаж WinFit-тэй харьцуулна. Өдөр бүр
+          02:30-д автоматаар ажиллана.
           <br />
-          <strong>Тулгаж засах</strong> — зөрүүтэй гишүүнийг WinFit-ийн
-          мэдээллээр терминал дээр дарж бичнэ. Танаас юу ч асуухгүй,
-          терминалаас юу ч устгахгүй.
+          <strong>Тулгаж засах</strong> — нэвтрэлтэд нөлөөлөх зөрүүг WinFit-ийн
+          мэдээллээр терминал дээр дарж бичнэ. Мөр тус бүрд чиглэлийг өөрөө
+          сонгох бол <ArrowLeftRight className="inline size-3" /> цэсийг
+          ашиглана.
         </CardDescription>
         <CardAction className="flex flex-wrap gap-2">
           <Button
@@ -120,16 +237,20 @@ export function DeviceAuditCard() {
             onClick={() => load(false)}
             disabled={busy !== null}
           >
-            {busy === 'diff' ? (
+            {busy === "diff" ? (
               <Loader2 className="size-3.5 animate-spin" />
             ) : (
               <ScanSearch className="size-3.5" />
             )}
             Зөрүү харах
           </Button>
-          {can('manager') && (
-            <Button size="sm" onClick={() => load(true)} disabled={busy !== null}>
-              {busy === 'fix' && <Loader2 className="size-3.5 animate-spin" />}
+          {can("manager") && (
+            <Button
+              size="sm"
+              onClick={() => load(true)}
+              disabled={busy !== null}
+            >
+              {busy === "fix" && <Loader2 className="size-3.5 animate-spin" />}
               Тулгаж засах
             </Button>
           )}
@@ -139,8 +260,8 @@ export function DeviceAuditCard() {
       <CardContent className="space-y-4">
         {!diff ? (
           <p className="text-muted-foreground text-xs">
-            «Зөрүү харах» дарж терминалын бодит байдлыг шалгана. Уншихаас
-            өөр юу ч хийхгүй.
+            «Зөрүү харах» дарж терминалын бодит байдлыг шалгана. Уншихаас өөр юу
+            ч хийхгүй.
           </p>
         ) : !diff.ran ? (
           <p className="text-muted-foreground text-xs">{diff.reason}</p>
@@ -149,22 +270,6 @@ export function DeviceAuditCard() {
             <div className="flex flex-wrap gap-x-8 gap-y-3">
               <Stat label="Терминал дээр" value={diff.deviceTotal} />
               <Stat label="WinFit-д" value={diff.winfitTotal} />
-              <Stat
-                label="Терминал дээр алга"
-                value={diff.missing.length}
-                warn={diff.missing.length > 0}
-              />
-              <Stat
-                label="Огноо зөрсөн"
-                value={diff.drift.length}
-                warn={diff.drift.length > 0}
-              />
-              <Stat
-                label="WinFit-д алга"
-                value={diff.extras.length}
-                warn={diff.extras.length > 0}
-              />
-              <Stat label="Нэр зөрсөн" value={diff.nameDiff.length} />
             </div>
 
             {clean && (
@@ -174,83 +279,135 @@ export function DeviceAuditCard() {
               </p>
             )}
 
-            {diff.nameDiff.length > 0 && (
-              <p className="text-muted-foreground text-xs">
-                Нэрийн зөрүү нь нэвтрэлтэд нөлөөлөхгүй тул автоматаар
-                зассаггүй — импортын үед бүртгэлийн дугаарыг нэрнээс
-                салгасны үлдэц. Тэгшитгэх бол «Бүгдийг дахин бичих».
-              </p>
-            )}
+            {/* ── Терминал дээр алга ── */}
+            <Section
+              title="Терминал дээр алга"
+              count={diff.missing.length}
+              hint="WinFit-д бүртгэлтэй ч терминал дээр байхгүй — эдгээр хүн орж чадахгүй."
+            >
+              {diff.missing.map((r) => (
+                <Row key={r.employeeNo} employeeNo={r.employeeNo} name={r.name}>
+                  <RowMenu
+                    employeeNo={r.employeeNo}
+                    name={r.name}
+                    push
+                    remove={false}
+                  />
+                </Row>
+              ))}
+            </Section>
 
-            {diff.extras.length > 0 && (
-              <div className="space-y-2 rounded-lg border p-3">
-                <p className="flex items-start gap-1.5 text-xs">
-                  <AlertTriangle className="mt-0.5 size-3.5 shrink-0 text-amber-600" />
-                  <span>
-                    Терминал дээр байгаа ч WinFit-д бүртгэлгүй{' '}
-                    <strong>{diff.extras.length}</strong> хэрэглэгч. Эдгээр нь
-                    ажилтан, цэвэрлэгч, зочин байж болзошгүй тул{' '}
-                    <strong>автоматаар устгадаггүй</strong> — «Тулгаж засах»
-                    ч тэднийг хөндөхгүй. Танай шийдвэр хэрэгтэй цорын ганц
-                    зүйл нь энэ.
-                  </span>
-                </p>
-                <ul className="max-h-40 space-y-0.5 overflow-y-auto text-xs">
-                  {diff.extras.map((e) => (
-                    <li key={e.employeeNo} className="flex gap-2">
-                      <span className="text-muted-foreground font-mono">
-                        №{e.employeeNo}
-                      </span>
-                      <span className="truncate">{e.name}</span>
-                      {e.end && (
-                        <span className="text-muted-foreground ml-auto shrink-0">
-                          {date(e.end)}
-                        </span>
-                      )}
-                    </li>
-                  ))}
-                </ul>
-                {can('admin') && (
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    className="text-destructive"
-                    onClick={() => setConfirmRemove(true)}
-                    disabled={busy !== null}
-                  >
-                    <Trash2 className="size-3.5" />
-                    Бүгдийг терминалаас устгах
-                  </Button>
-                )}
-              </div>
-            )}
+            {/* ── Эрхийн зөрүү ── */}
+            <Section
+              title="Зөрүүтэй"
+              count={diff.drift.length}
+              hint="Хоёр талд байгаа ч нэвтрэлтэд нөлөөлөх утга зөрсөн."
+            >
+              {diff.drift.map((r) => (
+                <Row key={r.employeeNo} employeeNo={r.employeeNo} name={r.name}>
+                  <Fields fields={r.fields} />
+                  <RowMenu
+                    employeeNo={r.employeeNo}
+                    name={r.name}
+                    push
+                    remove={false}
+                  />
+                </Row>
+              ))}
+            </Section>
+
+            {/* ── WinFit-д алга ── */}
+            <Section
+              title="WinFit-д алга"
+              count={diff.extras.length}
+              warn
+              hint="Терминал дээр байгаа ч WinFit-д бүртгэлгүй. Ажилтан, зочин байж болзошгүй тул автоматаар устгадаггүй — мөр бүрийг тусад нь шийднэ."
+            >
+              {diff.extras.map((r) => (
+                <Row key={r.employeeNo} employeeNo={r.employeeNo} name={r.name}>
+                  {r.end && (
+                    <span className="text-muted-foreground shrink-0">
+                      {date(r.end)}
+                    </span>
+                  )}
+                  <RowMenu
+                    employeeNo={r.employeeNo}
+                    name={r.name}
+                    push={false}
+                    remove
+                  />
+                </Row>
+              ))}
+            </Section>
+
+            {/* ── Нэр зөрсөн ── */}
+            <Section
+              title="Нэр зөрсөн"
+              count={diff.nameDiff.length}
+              hint="Нэвтрэлтэд нөлөөлөхгүй тул автоматаар зассаггүй — импортын үед бүртгэлийн дугаарыг нэрнээс салгасны үлдэц."
+              collapsed
+            >
+              {diff.nameDiff.map((r) => (
+                <Row key={r.employeeNo} employeeNo={r.employeeNo} name={r.name}>
+                  <Fields fields={r.fields} />
+                  <RowMenu
+                    employeeNo={r.employeeNo}
+                    name={r.name}
+                    push
+                    remove={false}
+                  />
+                </Row>
+              ))}
+            </Section>
           </>
         )}
       </CardContent>
 
-      <AlertDialog open={confirmRemove} onOpenChange={setConfirmRemove}>
+      <AlertDialog
+        open={pending !== null}
+        onOpenChange={(o) => !o && setPending(null)}
+      >
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>
-              {diff?.extras.length} хэрэглэгчийг терминалаас устгах уу?
+              {pending?.kind === "remove"
+                ? `№${pending.employeeNo} «${pending.name}»-г терминалаас устгах уу?`
+                : `№${pending?.employeeNo} «${pending?.name}»-г WinFit рүү авах уу?`}
             </AlertDialogTitle>
             <AlertDialogDescription>
-              Тэдний царайны бүртгэл хамт устана. WinFit-д бүртгэлгүй тул
-              буцааж сэргээх боломжгүй — заалны ажилтан, цэвэрлэгч биш
-              эсэхийг эхлээд шалгана уу.
+              {pending?.kind === "remove" ? (
+                <>
+                  Царайны бүртгэл нь хамт устана. Энэ хүн дахин орох боломжгүй
+                  болно — заалны ажилтан биш эсэхийг эхлээд шалгана уу.
+                </>
+              ) : (
+                <>
+                  Терминал дээрх нэр, эрхийн огноог WinFit рүү хуулна. Гишүүн
+                  байхгүй бол шинээр үүсгэнэ.
+                  <br />
+                  <br />⚠ Энэ нь хэвийн урсгалын эсрэг чиглэл. Эрхийн огноог
+                  терминалаас авах нь төлбөрийн бүртгэлтэй зөрчилдөж болзошгүй.
+                  Мөн терминалд утасны дугаар байдаггүй тул дараа нь гараар
+                  нөхөх шаардлагатай.
+                </>
+              )}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={busy !== null}>Болих</AlertDialogCancel>
+            <AlertDialogCancel disabled={busy !== null}>
+              Болих
+            </AlertDialogCancel>
             <AlertDialogAction
               onClick={(e) => {
                 e.preventDefault();
-                removeExtras();
+                if (pending) act(pending.kind, pending.employeeNo);
               }}
               disabled={busy !== null}
             >
-              {busy === 'remove' && <Loader2 className="size-4 animate-spin" />}
-              Устгах
+              {busy?.includes(":") && (
+                <Loader2 className="size-4 animate-spin" />
+              )}
+              {pending?.kind === "remove" ? "Устгах" : "Авах"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -259,27 +416,108 @@ export function DeviceAuditCard() {
   );
 }
 
-function Stat({
-  label,
-  value,
-  warn,
-}: {
-  label: string;
-  value: number;
-  warn?: boolean;
-}) {
+function Stat({ label, value }: { label: string; value: number }) {
   return (
     <div>
       <p className="text-muted-foreground text-xs">{label}</p>
-      <p
-        className={
-          warn
-            ? 'text-destructive text-lg font-semibold tabular-nums'
-            : 'text-lg font-semibold tabular-nums'
-        }
-      >
-        {value}
-      </p>
+      <p className="text-lg font-semibold tabular-nums">{value}</p>
     </div>
+  );
+}
+
+/**
+ * Нэг ангилал.
+ *
+ * ⚠ Гарчиг ба тоо нь ЗЭРЭГ байх ёстой: дээр нь тоо, доор нь тайлбар гэж
+ * тусад нь байрлуулбал аль тоо алины тухай яриад байгаа нь ойлгомжгүй
+ * болно (өмнөх хувилбар дээр яг ийм ойлгомжгүй байдал үүссэн).
+ */
+function Section({
+  title,
+  count,
+  hint,
+  warn,
+  collapsed,
+  children,
+}: {
+  title: string;
+  count: number;
+  hint: string;
+  warn?: boolean;
+  collapsed?: boolean;
+  children: React.ReactNode;
+}) {
+  const [open, setOpen] = useState(!collapsed);
+  if (!count) return null;
+  return (
+    <div className="rounded-lg border">
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        className="hover:bg-muted/50 flex w-full items-start gap-2 rounded-lg px-3 py-2.5 text-left"
+      >
+        {warn && (
+          <AlertTriangle className="mt-0.5 size-3.5 shrink-0 text-amber-600" />
+        )}
+        <span className="min-w-0">
+          <span className="text-sm font-medium">
+            {title}
+            <span
+              className={
+                warn
+                  ? "text-destructive ml-2 tabular-nums"
+                  : "text-muted-foreground ml-2 tabular-nums"
+              }
+            >
+              {count}
+            </span>
+          </span>
+          <span className="text-muted-foreground block text-xs">{hint}</span>
+        </span>
+        <span className="text-muted-foreground ml-auto shrink-0 text-xs">
+          {open ? "Хураах" : "Дэлгэх"}
+        </span>
+      </button>
+      {open && (
+        <ul className="max-h-64 space-y-0.5 overflow-y-auto border-t px-3 py-2 text-xs">
+          {children}
+        </ul>
+      )}
+    </div>
+  );
+}
+
+function Row({
+  employeeNo,
+  name,
+  children,
+}: {
+  employeeNo: number;
+  name: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <li className="flex items-center gap-2 py-0.5">
+      <span className="text-muted-foreground shrink-0 font-mono">
+        №{employeeNo}
+      </span>
+      <span className="truncate">{name}</span>
+      <span className="ml-auto flex items-center gap-2">{children}</span>
+    </li>
+  );
+}
+
+/** Зөрсөн талбарууд — хоёр талын утгыг ЗЭРЭГ харуулна. */
+function Fields({ fields }: { fields: FieldDiff[] }) {
+  return (
+    <span className="text-muted-foreground flex flex-wrap justify-end gap-x-3 gap-y-0.5 text-right">
+      {fields.map((f) => (
+        <span key={f.field}>
+          {f.field}: <span className="text-foreground">{f.winfit}</span>
+          <span className="mx-1">↔</span>
+          <span className="text-foreground">{f.device}</span>
+        </span>
+      ))}
+    </span>
   );
 }
