@@ -19,6 +19,7 @@ import {
 } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import Link from 'next/link';
+import { TerminalAddressCard } from '@/components/terminal-address-card';
 import { useApi } from '@/hooks/use-api';
 import { api } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
@@ -228,6 +229,8 @@ export default function TerminalPage() {
       </div>
 
       {/* ── Төхөөрөмжүүд ── */}
+      <TerminalAddressCard />
+
       <Card>
         <CardHeader>
           <CardTitle className="text-sm">Төхөөрөмж</CardTitle>
