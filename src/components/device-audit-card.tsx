@@ -108,6 +108,10 @@ export function DeviceAuditCard() {
         <CardDescription>
           Терминал дээрх бүх хэрэглэгчийг татаж WinFit-тэй харьцуулна.
           Өдөр бүр 02:30-д автоматаар ажиллана.
+          <br />
+          <strong>Тулгаж засах</strong> — зөрүүтэй гишүүнийг WinFit-ийн
+          мэдээллээр терминал дээр дарж бичнэ. Танаас юу ч асуухгүй,
+          терминалаас юу ч устгахгүй.
         </CardDescription>
         <CardAction className="flex flex-wrap gap-2">
           <Button
@@ -186,7 +190,9 @@ export function DeviceAuditCard() {
                     Терминал дээр байгаа ч WinFit-д бүртгэлгүй{' '}
                     <strong>{diff.extras.length}</strong> хэрэглэгч. Эдгээр нь
                     ажилтан, цэвэрлэгч, зочин байж болзошгүй тул{' '}
-                    <strong>автоматаар устгадаггүй</strong>.
+                    <strong>автоматаар устгадаггүй</strong> — «Тулгаж засах»
+                    ч тэднийг хөндөхгүй. Танай шийдвэр хэрэгтэй цорын ганц
+                    зүйл нь энэ.
                   </span>
                 </p>
                 <ul className="max-h-40 space-y-0.5 overflow-y-auto text-xs">
