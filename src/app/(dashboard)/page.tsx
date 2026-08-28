@@ -6,6 +6,7 @@ import {
   Check,
   CreditCard,
   KeyRound,
+  PhoneOff,
   ScanFace,
   Wallet,
 } from 'lucide-react';
@@ -40,6 +41,7 @@ interface Dash {
   };
   expiringSoon: { total: number; withoutCard: number };
   faceNotEnrolled: number;
+  noPhone: number;
   lockers: {
     keysOut: number;
     overdueRentals: number;
@@ -161,6 +163,16 @@ export default function HomePage() {
 
   const totalMembers = d.members.active + d.members.expired + d.members.lead;
   const attention = [
+    // ⚠ ХАМГИЙН ЭХЭНД: терминалаас импортлосон гишүүд утасгүй ирдэг ба
+    // утасгүйгээр Loopy-тэй ХОЛБОГДОХГҮЙ — карт үүсэхгүй, сануулга
+    // очихгүй. Ресепшний хамгийн том ажил тул бусдаас дээгүүр.
+    d.noPhone && {
+      icon: PhoneOff,
+      label: `${d.noPhone} гишүүн утасгүй`,
+      hint: 'Wallet карт үүсэхгүй, сануулга очихгүй — утас нэмнэ үү',
+      href: '/members?noPhone=true',
+      danger: true,
+    },
     d.expiringSoon.total && {
       icon: CreditCard,
       label: `${d.expiringSoon.total} гишүүний эрх 7 хоногт дуусна`,

@@ -1,6 +1,13 @@
 'use client';
 
-import { AlertTriangle, Plus, ScanFace, Search, X } from 'lucide-react';
+import {
+  AlertTriangle,
+  PhoneOff,
+  Plus,
+  ScanFace,
+  Search,
+  X,
+} from 'lucide-react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Suspense, useMemo, useState } from 'react';
 import { CardStageDot, type CardStage } from '@/components/card-stage';
@@ -20,7 +27,7 @@ interface MemberRow {
   id: string;
   memberNo: number;
   name: string;
-  phone: string;
+  phone: string | null;
   status: string;
   accessEndsAt: string | null;
   daysLeft: number | null;
@@ -55,6 +62,11 @@ const EXPIRING_FILTERS: FilterOption[] = [
   { value: '30', label: '30 хоногт дуусах' },
 ];
 
+const PHONE_FILTERS: FilterOption[] = [
+  { value: '', label: 'Бүгд' },
+  { value: 'true', label: 'Утасгүй', dot: 'bg-destructive' },
+];
+
 const FACE_FILTERS: FilterOption[] = [
   { value: '', label: 'Царай — бүгд' },
   { value: 'false', label: 'Уншуулаагүй', dot: 'bg-sky-500' },
@@ -70,6 +82,8 @@ function MembersList() {
   const [status, setStatus] = useState(params.get('status') ?? '');
   const [expiring, setExpiring] = useState(params.get('expiring') ?? '');
   const [face, setFace] = useState(params.get('faceEnrolled') ?? '');
+  // Нүүр хуудасны анхааруулгаас  гэж шууд орж ирнэ.
+  const [noPhone, setNoPhone] = useState(params.get('noPhone') ?? '');
   const [cardStage, setCardStage] = useState(params.get('cardStage') ?? '');
   const [page, setPage] = useState(1);
   const q = useDebounce(search);
@@ -82,10 +96,11 @@ function MembersList() {
         expiring: expiring || undefined,
         faceEnrolled: face || undefined,
         cardStage: cardStage || undefined,
+        noPhone: noPhone || undefined,
         page,
         limit: 20,
       })}`,
-    [q, status, expiring, face, cardStage, page],
+    [q, status, expiring, face, cardStage, noPhone, page],
   );
 
   const { data, loading, error } = useApi<Page<MemberRow>>(path);
@@ -107,6 +122,10 @@ function MembersList() {
     face && {
       label: FACE_FILTERS.find((f) => f.value === face)?.label ?? face,
       clear: () => setFilter(() => setFace('')),
+    },
+    noPhone && {
+      label: 'Утасгүй',
+      clear: () => setFilter(() => setNoPhone('')),
     },
     cardStage && {
       label: `Карт: ${CARD_STAGE_FILTERS.find((f) => f.value === cardStage)?.label ?? cardStage}`,
@@ -152,7 +171,18 @@ function MembersList() {
       key: 'phone',
       header: 'Утас',
       cell: (m) => (
-        <span className="font-mono text-sm tabular-nums">{fmtPhone(m.phone)}</span>
+        // ⚠ Утасгүй бол Loopy-тэй холбогдохгүй — ердийн «—» биш,
+        // анзаарагдахуйц байх ёстой.
+        m.phone ? (
+          <span className="font-mono text-sm tabular-nums">
+            {fmtPhone(m.phone)}
+          </span>
+        ) : (
+          <span className="text-destructive inline-flex items-center gap-1 text-xs font-medium">
+            <PhoneOff className="size-3.5" />
+            Утас алга
+          </span>
+        )
       ),
     },
     { key: 'status', header: 'Төлөв', cell: (m) => <StatusBadge status={m.status} /> },
@@ -228,6 +258,12 @@ function MembersList() {
           onChange={(v) => setFilter(() => setFace(v))}
           options={FACE_FILTERS}
           placeholder="Царай"
+        />
+        <FilterSelect
+          value={noPhone}
+          onChange={(v) => setFilter(() => setNoPhone(v))}
+          options={PHONE_FILTERS}
+          placeholder="Утас"
         />
       </div>
 
