@@ -1,6 +1,6 @@
 'use client';
 
-import { CheckCircle2, DoorOpen, Loader2, MonitorSmartphone, RefreshCw, ScanFace, Stethoscope, XCircle } from 'lucide-react';
+import { CheckCircle2, DoorOpen, Loader2, MonitorSmartphone, RefreshCw, ScanFace, Settings2, Stethoscope, XCircle } from 'lucide-react';
 import { useState } from 'react';
 import { toast } from 'sonner';
 import { ChartCard } from '@/components/chart-card';
@@ -19,7 +19,6 @@ import {
 } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import Link from 'next/link';
-import { TerminalConnectionCard } from '@/components/terminal-connection-card';
 import { useApi } from '@/hooks/use-api';
 import { api } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
@@ -229,15 +228,19 @@ export default function TerminalPage() {
       </div>
 
       {/* ── Төхөөрөмжүүд ── */}
-      <TerminalConnectionCard />
-
       <Card>
         <CardHeader>
           <CardTitle className="text-sm">Төхөөрөмж</CardTitle>
           <CardDescription>
             {mode.label} — {mode.hint}
           </CardDescription>
-          <CardAction>
+          <CardAction className="flex gap-2">
+            {/* Хаяг/нууц үг Тохиргоонд байдгийг ЭНД зааж өгнө — ажилтан
+                эхлээд энэ хуудсыг хардаг. */}
+            <LinkButton size="sm" variant="ghost" href="/settings/connections">
+              <Settings2 className="size-3.5" />
+              Холболт тохируулах
+            </LinkButton>
             <Button
               size="sm"
               variant="outline"

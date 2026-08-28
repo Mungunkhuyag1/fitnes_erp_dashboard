@@ -11,6 +11,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { LoopyProgramCard } from "@/components/loopy-program-card";
+import { TerminalConnectionCard } from "@/components/terminal-connection-card";
 import { api } from "@/lib/api";
 import { cn } from "@/lib/utils";
 
@@ -26,9 +27,12 @@ const ITEMS = [
 /**
  * Гадаад холболтын байдал.
  *
- * Нууц түлхүүрүүд `.env`-д байдаг тул ЭНД засварлахгүй — зөвхөн ажиллаж
- * байгаа эсэхийг шалгана. Тохиргоо буруу бол алдааны текстийг ил харуулна:
- * «холбогдсонгүй» гэхээс илүү шалтгаан нь хэрэгтэй.
+ * Loopy/банкны нууц түлхүүрүүд `.env`-д байдаг тул ЭНД засварлахгүй —
+ * зөвхөн ажиллаж байгаа эсэхийг шалгана. Тохиргоо буруу бол алдааны
+ * текстийг ил харуулна: «холбогдсонгүй» гэхээс илүү шалтгаан нь хэрэгтэй.
+ *
+ * ⚠ Терминал нь ӨӨР: түүний хаяг DHCP-ээр солигддог, нууц үгийг заалан
+ * дээр солино. Иймд ажилтан өөрөө засах ёстой — `TerminalConnectionCard`.
  */
 export default function ConnectionSettings() {
   const [result, setResult] = useState<
@@ -55,9 +59,10 @@ export default function ConnectionSettings() {
     <div className="space-y-4">
       <Card>
         <CardHeader>
-          <CardTitle className="text-sm">Холболт</CardTitle>
+          <CardTitle className="text-sm">Гадаад үйлчилгээ</CardTitle>
           <CardDescription>
-            Нууц түлхүүрийг серверийн .env-д тохируулна. Энд зөвхөн шалгана.
+            Loopy, банкны нууц түлхүүрийг серверийн .env-д тохируулна — энд
+            зөвхөн шалгана. Терминалын холболтыг доор тохируулна.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-3">
@@ -109,6 +114,8 @@ export default function ConnectionSettings() {
       </Card>
 
       <LoopyProgramCard />
+
+      <TerminalConnectionCard />
     </div>
   );
 }
