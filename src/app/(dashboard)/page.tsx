@@ -1,4 +1,4 @@
-'use client';
+"use client";
 
 import {
   AlertTriangle,
@@ -9,26 +9,27 @@ import {
   PhoneOff,
   ScanFace,
   Wallet,
-} from 'lucide-react';
-import { useRouter } from 'next/navigation';
-import { useMemo, useState } from 'react';
-import { DonutChart, TrendChart } from '@/components/charts';
-import { LinkButton } from '@/components/link-button';
-import { PageHeader } from '@/components/page-header';
-import { StatCard } from '@/components/stat-card';
-import { Button } from '@/components/ui/button';
+} from "lucide-react";
+import { useRouter } from "next/navigation";
+import { useMemo, useState } from "react";
+import { DonutChart, TrendChart } from "@/components/charts";
+import { LinkButton } from "@/components/link-button";
+import { AwaitingApprovalCard } from "@/components/awaiting-approval-card";
+import { PageHeader } from "@/components/page-header";
+import { StatCard } from "@/components/stat-card";
+import { Button } from "@/components/ui/button";
 import {
   Card,
   CardAction,
   CardContent,
   CardHeader,
   CardTitle,
-} from '@/components/ui/card';
-import { Skeleton } from '@/components/ui/skeleton';
-import { useApi } from '@/hooks/use-api';
-import { useAuth } from '@/lib/auth';
-import { date, money, relative } from '@/lib/format';
-import { cn } from '@/lib/utils';
+} from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
+import { useApi } from "@/hooks/use-api";
+import { useAuth } from "@/lib/auth";
+import { date, money, relative } from "@/lib/format";
+import { cn } from "@/lib/utils";
 
 interface Dash {
   today: { visits: number; scans: number; denied: number };
@@ -94,17 +95,27 @@ interface Dash {
   };
 }
 
-type DashRange = '7d' | '30d' | '12m';
+type DashRange = "7d" | "30d" | "12m";
 
 const RANGES: { key: DashRange; label: string; short: string }[] = [
-  { key: '7d', label: '7 хоног', short: '7 хоногт' },
-  { key: '30d', label: '30 хоног', short: '30 хоногт' },
-  { key: '12m', label: '12 сар', short: '12 сард' },
+  { key: "7d", label: "7 хоног", short: "7 хоногт" },
+  { key: "30d", label: "30 хоног", short: "30 хоногт" },
+  { key: "12m", label: "12 сар", short: "12 сард" },
 ];
 
 const MONTHS = [
-  '1-р', '2-р', '3-р', '4-р', '5-р', '6-р',
-  '7-р', '8-р', '9-р', '10-р', '11-р', '12-р',
+  "1-р",
+  "2-р",
+  "3-р",
+  "4-р",
+  "5-р",
+  "6-р",
+  "7-р",
+  "8-р",
+  "9-р",
+  "10-р",
+  "11-р",
+  "12-р",
 ];
 
 /**
@@ -114,16 +125,16 @@ const MONTHS = [
  * сарын дугаарыг үлдээнэ — 12 цэг зэрэгцэхэд орон зай хомс.
  */
 const axisLabel = (iso: string, range: DashRange) =>
-  range === '12m'
+  range === "12m"
     ? MONTHS[Number(iso.slice(5, 7)) - 1]
-    : iso.slice(5).replace('-', '/');
+    : iso.slice(5).replace("-", "/");
 
 export default function HomePage() {
-  const [range, setRange] = useState<DashRange>('30d');
+  const [range, setRange] = useState<DashRange>("30d");
   const { data: d, loading } = useApi<Dash>(`/dashboard?range=${range}`);
   const { user } = useAuth();
   const router = useRouter();
-  const [metric, setMetric] = useState<'revenue' | 'visits'>('revenue');
+  const [metric, setMetric] = useState<"revenue" | "visits">("revenue");
 
   const chartData = useMemo(
     () =>
@@ -141,7 +152,7 @@ export default function HomePage() {
   }, [d]);
 
   const shortLabel =
-    RANGES.find((r) => r.key === (d?.range ?? range))?.short ?? '';
+    RANGES.find((r) => r.key === (d?.range ?? range))?.short ?? "";
 
   if (loading && !d) {
     return (
@@ -169,8 +180,8 @@ export default function HomePage() {
     d.noPhone && {
       icon: PhoneOff,
       label: `${d.noPhone} гишүүн утасгүй`,
-      hint: 'Wallet карт үүсэхгүй, сануулга очихгүй — утас нэмнэ үү',
-      href: '/members?noPhone=true',
+      hint: "Wallet карт үүсэхгүй, сануулга очихгүй — утас нэмнэ үү",
+      href: "/members?noPhone=true",
       danger: true,
     },
     d.expiringSoon.total && {
@@ -178,29 +189,29 @@ export default function HomePage() {
       label: `${d.expiringSoon.total} гишүүний эрх 7 хоногт дуусна`,
       hint: d.expiringSoon.withoutCard
         ? `${d.expiringSoon.withoutCard} нь картгүй — залгах шаардлагатай`
-        : 'Wallet мэдэгдэл автоматаар очно',
-      href: '/members?expiring=7',
+        : "Wallet мэдэгдэл автоматаар очно",
+      href: "/members?expiring=7",
       danger: d.expiringSoon.withoutCard > 0,
     },
     d.sync.outboxFailed && {
       icon: AlertTriangle,
       label: `${d.sync.outboxFailed} өөрчлөлт хүрээгүй`,
-      hint: 'Терминал эсвэл Loopy руу бичигдээгүй',
-      href: '/sync',
+      hint: "Терминал эсвэл Loopy руу бичигдээгүй",
+      href: "/sync",
       danger: true,
     },
     d.cardStages.notAllowed && {
       icon: Wallet,
       label: `${d.cardStages.notAllowed} гишүүн Loopy-д бүртгэгдээгүй`,
-      hint: 'Тэд карт үүсгэж чадахгүй — тулгалт ажиллуулна уу',
-      href: '/members?cardStage=not_allowed',
+      hint: "Тэд карт үүсгэж чадахгүй — тулгалт ажиллуулна уу",
+      href: "/members?cardStage=not_allowed",
       danger: true,
     },
     d.lockers.overdueRentals && {
       icon: KeyRound,
       label: `${d.lockers.overdueRentals} шүүгээний хугацаа хэтэрсэн`,
-      hint: 'Түлхүүр буцаагдаагүй',
-      href: '/lockers',
+      hint: "Түлхүүр буцаагдаагүй",
+      href: "/lockers",
       danger: true,
     },
     d.lockers.staleDaily && {
@@ -208,22 +219,22 @@ export default function HomePage() {
       label: `${d.lockers.staleDaily} өдрийн түлхүүр буцаагдаагүй`,
       // ⚠ Гишүүн аваад явсныг БАТАЛДАГГҮЙ — ресепшн бүртгээгүй ч байж
       // болно. Тиймээс автоматаар мэдэгдэл явуулахгүй, ажилтан шалгана.
-      hint: '6+ цаг гарсан — самбараас шалгаж, шаардвал сануулга илгээнэ',
-      href: '/lockers',
+      hint: "6+ цаг гарсан — самбараас шалгаж, шаардвал сануулга илгээнэ",
+      href: "/lockers",
       danger: true,
     },
     d.lockers.expiringRentals && {
       icon: KeyRound,
       label: `${d.lockers.expiringRentals} шүүгээний түрээс 7 хоногт дуусна`,
-      hint: 'Wallet мэдэгдэл автоматаар очно',
-      href: '/lockers',
+      hint: "Wallet мэдэгдэл автоматаар очно",
+      href: "/lockers",
       danger: false,
     },
     d.faceNotEnrolled && {
       icon: ScanFace,
       label: `${d.faceNotEnrolled} гишүүн царайгаа уншуулаагүй`,
-      hint: 'Терминал дээр нэг удаа уншуулна',
-      href: '/members?faceEnrolled=false',
+      hint: "Терминал дээр нэг удаа уншуулна",
+      href: "/members?faceEnrolled=false",
       danger: false,
     },
   ].filter(Boolean) as {
@@ -237,16 +248,36 @@ export default function HomePage() {
   // Гишүүдийн төлөвийн бүтэц. Дараалал нь «эрүүл → анхаарах» чиглэлтэй:
   // идэвхтэй, шинэ, дууссан, зогссон.
   const statusData = [
-    { label: 'Идэвхтэй', value: d.members.active, color: 'var(--chart-3)', href: '/members?status=active' },
-    { label: 'Шинэ', value: d.members.lead, color: 'var(--chart-1)', href: '/members?status=lead' },
-    { label: 'Дууссан', value: d.members.expired, color: 'var(--chart-2)', href: '/members?status=expired' },
-    { label: 'Зогссон', value: d.members.suspended, color: 'var(--chart-4)', href: '/members?status=suspended' },
+    {
+      label: "Идэвхтэй",
+      value: d.members.active,
+      color: "var(--chart-3)",
+      href: "/members?status=active",
+    },
+    {
+      label: "Шинэ",
+      value: d.members.lead,
+      color: "var(--chart-1)",
+      href: "/members?status=lead",
+    },
+    {
+      label: "Дууссан",
+      value: d.members.expired,
+      color: "var(--chart-2)",
+      href: "/members?status=expired",
+    },
+    {
+      label: "Зогссон",
+      value: d.members.suspended,
+      color: "var(--chart-4)",
+      href: "/members?status=suspended",
+    },
   ].filter((x) => x.value > 0);
 
   return (
     <div className="space-y-5">
       <PageHeader
-        title={`Сайн байна уу, ${user?.name?.split(' ')[0] ?? ''} 👋`}
+        title={`Сайн байна уу, ${user?.name?.split(" ")[0] ?? ""} 👋`}
         description="Өнөөдрийн ирц, орлого, анхаарах зүйлс"
       >
         <div className="flex flex-wrap items-center gap-2">
@@ -256,8 +287,8 @@ export default function HomePage() {
               <Button
                 key={r.key}
                 size="sm"
-                variant={range === r.key ? 'default' : 'ghost'}
-                className={range === r.key ? '' : 'text-muted-foreground'}
+                variant={range === r.key ? "default" : "ghost"}
+                className={range === r.key ? "" : "text-muted-foreground"}
                 onClick={() => setRange(r.key)}
               >
                 {r.label}
@@ -268,17 +299,19 @@ export default function HomePage() {
         </div>
       </PageHeader>
 
+      <AwaitingApprovalCard />
+
       {/* ── Үзүүлэлтүүд ── */}
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <StatCard
           label="Өнөөдрийн ирц"
           value={d.today.visits}
           suffix="хүн"
-          sub={`${d.today.scans} уншуулалт${d.today.denied ? ` · ${d.today.denied} татгалзсан` : ''}`}
+          sub={`${d.today.scans} уншуулалт${d.today.denied ? ` · ${d.today.denied} татгалзсан` : ""}`}
           delta={d.period.visitsDelta}
           footL={shortLabel}
           footR={`${d.period.visits} хүн`}
-          onClick={() => router.push('/check-ins')}
+          onClick={() => router.push("/check-ins")}
         />
         <StatCard
           label="Өнөөдрийн орлого"
@@ -287,7 +320,7 @@ export default function HomePage() {
           delta={d.period.revenueDelta}
           footL={shortLabel}
           footR={money(d.period.revenue)}
-          onClick={() => router.push('/reports')}
+          onClick={() => router.push("/reports")}
         />
         <StatCard
           label="Идэвхтэй гишүүн"
@@ -296,7 +329,7 @@ export default function HomePage() {
           ratio={totalMembers ? d.members.active / totalMembers : 0}
           footL={`${d.members.expired} дууссан`}
           footR={`${d.members.lead} шинэ`}
-          onClick={() => router.push('/members?status=active')}
+          onClick={() => router.push("/members?status=active")}
         />
         <StatCard
           label="Гарсан түлхүүр"
@@ -305,10 +338,10 @@ export default function HomePage() {
           sub={
             d.lockers.overdueRentals
               ? `${d.lockers.overdueRentals} хугацаа хэтэрсэн`
-              : 'Хугацаа хэтэрсэн байхгүй'
+              : "Хугацаа хэтэрсэн байхгүй"
           }
-          tone={d.lockers.overdueRentals ? 'danger' : 'default'}
-          onClick={() => router.push('/lockers')}
+          tone={d.lockers.overdueRentals ? "danger" : "default"}
+          onClick={() => router.push("/lockers")}
         />
       </div>
 
@@ -319,7 +352,7 @@ export default function HomePage() {
             <div>
               <CardTitle className="text-base">{d.rangeLabel}</CardTitle>
               <p className="mt-1 text-2xl font-semibold tabular-nums">
-                {metric === 'visits'
+                {metric === "visits"
                   ? `${d.trend.reduce((s, p) => s + p.visits, 0)} ирц`
                   : money(d.trend.reduce((s, p) => s + p.revenue, 0))}
               </p>
@@ -328,14 +361,14 @@ export default function HomePage() {
               <div className="flex gap-1">
                 {(
                   [
-                    ['revenue', 'Орлого'],
-                    ['visits', 'Ирц'],
+                    ["revenue", "Орлого"],
+                    ["visits", "Ирц"],
                   ] as const
                 ).map(([k, lbl]) => (
                   <Button
                     key={k}
                     size="sm"
-                    variant={metric === k ? 'default' : 'outline'}
+                    variant={metric === k ? "default" : "outline"}
                     onClick={() => setMetric(k)}
                   >
                     {lbl}
@@ -351,21 +384,21 @@ export default function HomePage() {
             <TrendChart
               data={chartData.map((p) => ({
                 label: p.label,
-                value: metric === 'revenue' ? p.revenue : p.visits,
+                value: metric === "revenue" ? p.revenue : p.visits,
               }))}
-              seriesLabel={metric === 'revenue' ? 'Орлого' : 'Ирц'}
-              valueFmt={(v) => (metric === 'revenue' ? money(v) : `${v} хүн`)}
-              color={metric === 'revenue' ? 'var(--chart-1)' : 'var(--chart-3)'}
+              seriesLabel={metric === "revenue" ? "Орлого" : "Ирц"}
+              valueFmt={(v) => (metric === "revenue" ? money(v) : `${v} хүн`)}
+              color={metric === "revenue" ? "var(--chart-1)" : "var(--chart-3)"}
             />
 
             {peak && (
               <div className="mt-3 grid gap-3 sm:grid-cols-3">
                 <Mini
-                  label={d.range === '12m' ? 'Оргил сар' : 'Оргил өдөр'}
+                  label={d.range === "12m" ? "Оргил сар" : "Оргил өдөр"}
                   value={`${axisLabel(peak.date, d.range)} · ${money(peak.revenue)}`}
                 />
                 <Mini
-                  label={d.range === '12m' ? 'Сарын дундаж' : 'Өдрийн дундаж'}
+                  label={d.range === "12m" ? "Сарын дундаж" : "Өдрийн дундаж"}
                   value={money(
                     Math.round(
                       d.trend.reduce((s, p) => s + p.revenue, 0) /
@@ -409,20 +442,20 @@ export default function HomePage() {
                     type="button"
                     onClick={() => router.push(a.href)}
                     className={cn(
-                      'group hover:bg-accent/50 focus-visible:ring-ring/50 flex w-full items-center gap-3 rounded-xl border px-3 py-3 text-left outline-none transition-colors focus-visible:ring-3',
+                      "group hover:bg-accent/50 focus-visible:ring-ring/50 flex w-full items-center gap-3 rounded-xl border px-3 py-3 text-left outline-none transition-colors focus-visible:ring-3",
                       a.danger
-                        ? 'border-destructive/25 bg-destructive/[0.03]'
-                        : 'border-border',
+                        ? "border-destructive/25 bg-destructive/[0.03]"
+                        : "border-border",
                     )}
                   >
                     {/* Иконыг дугуй дэвсгэр дээр — жагсаалтын мөрүүд
                         харааны хувьд тогтвортой эхлэлтэй болно. */}
                     <span
                       className={cn(
-                        'flex size-9 shrink-0 items-center justify-center rounded-full',
+                        "flex size-9 shrink-0 items-center justify-center rounded-full",
                         a.danger
-                          ? 'bg-destructive/10 text-destructive'
-                          : 'bg-muted text-muted-foreground',
+                          ? "bg-destructive/10 text-destructive"
+                          : "bg-muted text-muted-foreground",
                       )}
                     >
                       <Icon className="size-4" />
@@ -484,7 +517,9 @@ export default function HomePage() {
                       <span className="text-muted-foreground flex-1 text-left">
                         {sd.label}
                       </span>
-                      <span className="font-medium tabular-nums">{sd.value}</span>
+                      <span className="font-medium tabular-nums">
+                        {sd.value}
+                      </span>
                       <span className="text-muted-foreground w-9 text-right tabular-nums">
                         {Math.round((sd.value / (totalMembers || 1)) * 100)}%
                       </span>
@@ -523,13 +558,19 @@ export default function HomePage() {
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="text-muted-foreground border-y text-xs">
-                      <th className="px-6 py-2 text-left font-medium">Шүүгээ</th>
-                      <th className="px-3 py-2 text-left font-medium">Гишүүн</th>
+                      <th className="px-6 py-2 text-left font-medium">
+                        Шүүгээ
+                      </th>
+                      <th className="px-3 py-2 text-left font-medium">
+                        Гишүүн
+                      </th>
                       <th className="px-3 py-2 text-left font-medium">Төрөл</th>
                       <th className="hidden px-3 py-2 text-left font-medium sm:table-cell">
                         Олгосон
                       </th>
-                      <th className="px-6 py-2 text-right font-medium">Буцаах</th>
+                      <th className="px-6 py-2 text-right font-medium">
+                        Буцаах
+                      </th>
                     </tr>
                   </thead>
                   <tbody className="divide-border divide-y">
@@ -545,18 +586,22 @@ export default function HomePage() {
                           <span className="inline-flex items-center gap-2">
                             <KeyRound
                               className={cn(
-                                'size-4 shrink-0',
-                                l.overdue ? 'text-destructive' : 'text-emerald-500',
+                                "size-4 shrink-0",
+                                l.overdue
+                                  ? "text-destructive"
+                                  : "text-emerald-500",
                               )}
                             />
                             <span className="font-medium">
-                              {l.zone}{' '}
+                              {l.zone}{" "}
                               <span className="tabular-nums">№{l.number}</span>
                             </span>
                           </span>
                         </td>
                         <td className="text-muted-foreground px-3 py-2.5">
-                          <span className="truncate">{l.memberName ?? '—'}</span>
+                          <span className="truncate">
+                            {l.memberName ?? "—"}
+                          </span>
                           {l.memberNo !== null && (
                             <span className="ml-1 text-xs">№{l.memberNo}</span>
                           )}
@@ -564,13 +609,13 @@ export default function HomePage() {
                         <td className="px-3 py-2.5">
                           <span
                             className={cn(
-                              'rounded-md px-1.5 py-0.5 text-xs',
-                              l.type === 'rental'
-                                ? 'bg-sky-500/10 text-sky-700 dark:text-sky-300'
-                                : 'bg-muted text-muted-foreground',
+                              "rounded-md px-1.5 py-0.5 text-xs",
+                              l.type === "rental"
+                                ? "bg-sky-500/10 text-sky-700 dark:text-sky-300"
+                                : "bg-muted text-muted-foreground",
                             )}
                           >
-                            {l.type === 'rental' ? 'Түрээс' : 'Өдрийн'}
+                            {l.type === "rental" ? "Түрээс" : "Өдрийн"}
                           </span>
                         </td>
                         <td className="text-muted-foreground hidden px-3 py-2.5 text-xs sm:table-cell">
@@ -580,13 +625,13 @@ export default function HomePage() {
                           {l.dueAt ? (
                             <span
                               className={cn(
-                                'text-xs',
+                                "text-xs",
                                 l.overdue
-                                  ? 'text-destructive font-medium'
-                                  : 'text-muted-foreground',
+                                  ? "text-destructive font-medium"
+                                  : "text-muted-foreground",
                               )}
                             >
-                              {l.overdue && 'ХЭТЭРСЭН · '}
+                              {l.overdue && "ХЭТЭРСЭН · "}
                               {date(l.dueAt)}
                             </span>
                           ) : (
@@ -623,14 +668,16 @@ export default function HomePage() {
               >
                 <span
                   className={cn(
-                    'size-2 rounded-full',
-                    dev.online ? 'bg-emerald-500' : 'bg-muted-foreground/40',
+                    "size-2 rounded-full",
+                    dev.online ? "bg-emerald-500" : "bg-muted-foreground/40",
                   )}
                 />
                 <div>
                   <p className="text-sm font-medium">{dev.name}</p>
                   <p className="text-muted-foreground text-xs">
-                    {dev.online ? 'Холбогдсон' : `Сүүлд ${relative(dev.lastSeenAt)}`}
+                    {dev.online
+                      ? "Холбогдсон"
+                      : `Сүүлд ${relative(dev.lastSeenAt)}`}
                   </p>
                 </div>
               </div>

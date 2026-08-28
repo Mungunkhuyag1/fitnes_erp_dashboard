@@ -12,6 +12,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { FilterSelect, type FilterOption } from '@/components/filter-select';
+import { AwaitingApprovalCard } from '@/components/awaiting-approval-card';
 import { PageHeader } from '@/components/page-header';
 import { StatCard } from '@/components/stat-card';
 import { Button } from '@/components/ui/button';
@@ -275,6 +276,8 @@ export default function InvoicesPage() {
         title="Төлбөр"
         description="Онлайн нэхэмжлэх ба гүйлгээний түүх"
       />
+
+      <AwaitingApprovalCard />
 
       <div className="grid gap-4 sm:grid-cols-3">
         <StatCard

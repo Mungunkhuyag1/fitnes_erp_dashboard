@@ -1,23 +1,24 @@
-'use client';
+"use client";
 
 import {
   AlertTriangle,
+  BadgeCheck,
   CheckCircle2,
   Clock,
   Loader2,
   XCircle,
-} from 'lucide-react';
-import Link from 'next/link';
-import { useSearchParams } from 'next/navigation';
-import { Suspense, useEffect, useState } from 'react';
-import { PayHeader } from '@/components/pay-flow';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
-import { api } from '@/lib/api';
-import { date, dateTime, money } from '@/lib/format';
+} from "lucide-react";
+import Link from "next/link";
+import { useSearchParams } from "next/navigation";
+import { Suspense, useEffect, useState } from "react";
+import { PayHeader } from "@/components/pay-flow";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import { api } from "@/lib/api";
+import { date, dateTime, money } from "@/lib/format";
 
 interface InvoiceStatus {
-  status: 'pending' | 'paid' | 'expired' | 'cancelled';
+  status: "pending" | "paid" | "expired" | "cancelled";
   paidAt: string | null;
   packageName: string;
   days: number;
@@ -27,6 +28,9 @@ interface InvoiceStatus {
   memberName: string | null;
   /** Зөвхөн төлөгдсөн үед: эрх ХЭЗЭЭ хүртэл сунгагдсан. */
   accessEndsAt: string | null;
+  /** Эрх нээхийн өмнө ресепшн дээр баримт шалгуулах ёстой эсэх. */
+  needsApproval: boolean;
+  approvedAt: string | null;
 }
 
 /** Хэдэн секунд тутам шалгах. */
@@ -42,7 +46,7 @@ const MAX_POLLS = 72;
 
 function ReturnInner() {
   const params = useSearchParams();
-  const invoiceId = params.get('invoice');
+  const invoiceId = params.get("invoice");
 
   const [inv, setInv] = useState<InvoiceStatus | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -67,11 +71,11 @@ function ReturnInner() {
         setInv(r);
         setError(null);
         // Эцсийн төлөвт хүрвэл давтахаа болино.
-        if (r.status !== 'pending') return;
+        if (r.status !== "pending") return;
       } catch (e) {
         if (!alive) return;
         // Түр зуурын сүлжээний алдаа — давтсаар байна.
-        setError(e instanceof Error ? e.message : 'Шалгаж чадсангүй');
+        setError(e instanceof Error ? e.message : "Шалгаж чадсангүй");
       }
       if (++tries > MAX_POLLS) {
         setGaveUp(true);
@@ -103,14 +107,47 @@ function ReturnInner() {
   if (!inv && !error) {
     return (
       <State
-        icon={<Loader2 className="text-muted-foreground size-10 animate-spin" />}
+        icon={
+          <Loader2 className="text-muted-foreground size-10 animate-spin" />
+        }
         title="Төлбөрийг шалгаж байна"
         text="Хэдхэн секунд хүлээнэ үү."
       />
     );
   }
 
-  if (inv?.status === 'paid') {
+  // ⚠ Хөнгөлөлттэй багц: төлөгдсөн ч эрх нээгдээгүй. Үүнийг ТОДОРХОЙ
+  // хэлэхгүй бол хэрэглэгч төлчихөөд юу ч болоогүйг хараад гомдоно —
+  // энэ бол урсгалын хамгийн эрсдэлтэй цэг.
+  if (inv?.status === "paid" && inv.needsApproval && !inv.approvedAt) {
+    return (
+      <State
+        tone="warn"
+        icon={<BadgeCheck className="size-10 text-amber-500" />}
+        title="Төлбөр амжилттай"
+        text="Эрх нээхийн тулд ресепшн дээр ирж баримтаа үзүүлнэ үү."
+        amount={inv.amount}
+        note={
+          <>
+            Энэ бол <strong>хөнгөлөлттэй багц</strong>. Оюутны үнэмлэх, иргэний
+            үнэмлэх эсвэл оршин суух баримтаа ресепшн дээр үзүүлснээр ажилтан
+            эрхийг тань нээнэ.
+            <br />
+            <br />
+            Эрхийн хугацаа нь <strong>нээгдсэн өдрөөс</strong> эхэлнэ — хүлээсэн
+            хоног тань алдагдахгүй.
+          </>
+        }
+        rows={[
+          { label: "Гишүүн", value: inv.memberName ?? "—" },
+          { label: "Багц", value: `${inv.packageName} · ${inv.days} хоног` },
+          { label: "Төлсөн", value: inv.paidAt ? dateTime(inv.paidAt) : "—" },
+        ]}
+      />
+    );
+  }
+
+  if (inv?.status === "paid") {
     return (
       <State
         tone="ok"
@@ -119,34 +156,34 @@ function ReturnInner() {
         text="Терминал дээр шууд нэвтэрч болно."
         amount={inv.amount}
         rows={[
-          { label: 'Гишүүн', value: inv.memberName ?? '—' },
-          { label: 'Багц', value: `${inv.packageName} · ${inv.days} хоног` },
+          { label: "Гишүүн", value: inv.memberName ?? "—" },
+          { label: "Багц", value: `${inv.packageName} · ${inv.days} хоног` },
           {
-            label: 'Эрх дуусах',
-            value: inv.accessEndsAt ? date(inv.accessEndsAt) : '—',
+            label: "Эрх дуусах",
+            value: inv.accessEndsAt ? date(inv.accessEndsAt) : "—",
             strong: true,
           },
-          { label: 'Төлсөн', value: inv.paidAt ? dateTime(inv.paidAt) : '—' },
+          { label: "Төлсөн", value: inv.paidAt ? dateTime(inv.paidAt) : "—" },
         ]}
       />
     );
   }
 
-  if (inv?.status === 'expired' || inv?.status === 'cancelled') {
+  if (inv?.status === "expired" || inv?.status === "cancelled") {
     return (
       <State
         tone="bad"
         icon={<XCircle className="text-destructive size-10" />}
         title={
-          inv.status === 'expired'
-            ? 'Нэхэмжлэхийн хугацаа дууссан'
-            : 'Нэхэмжлэх цуцлагдсан'
+          inv.status === "expired"
+            ? "Нэхэмжлэхийн хугацаа дууссан"
+            : "Нэхэмжлэх цуцлагдсан"
         }
         text="Төлбөр бүртгэгдээгүй. Картаа дахин нээж дахин оролдоно уу."
         amount={inv.amount}
         rows={[
-          { label: 'Гишүүн', value: inv.memberName ?? '—' },
-          { label: 'Багц', value: `${inv.packageName} · ${inv.days} хоног` },
+          { label: "Гишүүн", value: inv.memberName ?? "—" },
+          { label: "Багц", value: `${inv.packageName} · ${inv.days} хоног` },
         ]}
       />
     );
@@ -171,15 +208,15 @@ function ReturnInner() {
       text={
         error
           ? `Түр зуурын алдаа: ${error}. Дахин оролдож байна…`
-          : 'Банкнаас хариу ирэхийг хүлээж байна. Энэ хуудсыг хаахгүй байна уу.'
+          : "Банкнаас хариу ирэхийг хүлээж байна. Энэ хуудсыг хаахгүй байна уу."
       }
       amount={inv?.amount}
       rows={
         inv
           ? [
-              { label: 'Гишүүн', value: inv.memberName ?? '—' },
+              { label: "Гишүүн", value: inv.memberName ?? "—" },
               {
-                label: 'Багц',
+                label: "Багц",
                 value: `${inv.packageName} · ${inv.days} хоног`,
               },
             ]
@@ -202,22 +239,27 @@ function State({
   amount,
   rows,
   tone,
+  note,
 }: {
   icon: React.ReactNode;
   title: string;
   text: string;
   amount?: number;
   rows?: DetailRow[];
-  tone?: 'ok' | 'bad';
+  tone?: "ok" | "bad" | "warn";
+  /** Хийх ёстой ҮЙЛДЭЛ — зөвхөн шаардлагатай үед. */
+  note?: React.ReactNode;
 }) {
   return (
     <Card
       className={
-        tone === 'ok'
-          ? 'border-emerald-500/40'
-          : tone === 'bad'
-            ? 'border-destructive/40'
-            : undefined
+        tone === "ok"
+          ? "border-emerald-500/40"
+          : tone === "bad"
+            ? "border-destructive/40"
+            : tone === "warn"
+              ? "border-amber-500/50"
+              : undefined
       }
     >
       <CardContent className="flex flex-col items-center gap-3 py-10 text-center">
@@ -232,6 +274,12 @@ function State({
           <p className="text-muted-foreground mt-2 text-sm">{text}</p>
         </div>
 
+        {note && (
+          <p className="w-full rounded-lg border border-amber-500/30 bg-amber-500/8 px-3 py-2.5 text-left text-sm text-amber-800 dark:text-amber-300">
+            {note}
+          </p>
+        )}
+
         {rows && rows.length > 0 && (
           <dl className="mt-1 w-full space-y-2 border-t pt-4 text-left">
             {rows.map((r) => (
@@ -240,8 +288,8 @@ function State({
                 <dd
                   className={
                     r.strong
-                      ? 'text-sm font-semibold tabular-nums'
-                      : 'text-sm tabular-nums'
+                      ? "text-sm font-semibold tabular-nums"
+                      : "text-sm tabular-nums"
                   }
                 >
                   {r.value}
