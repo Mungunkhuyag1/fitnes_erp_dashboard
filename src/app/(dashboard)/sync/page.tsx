@@ -16,6 +16,7 @@ import { useState } from 'react';
 import { toast } from 'sonner';
 import Link from 'next/link';
 import { DataTable, type Column } from '@/components/data-table';
+import { DeviceAuditCard } from '@/components/device-audit-card';
 import { PageHeader } from '@/components/page-header';
 import { Button } from '@/components/ui/button';
 import {
@@ -408,6 +409,8 @@ export default function SyncPage() {
           </DropdownMenuContent>
         </DropdownMenu>
       </PageHeader>
+
+      <DeviceAuditCard />
 
       <AlertDialog open={confirmResyncAll} onOpenChange={setConfirmResyncAll}>
         <AlertDialogContent>
