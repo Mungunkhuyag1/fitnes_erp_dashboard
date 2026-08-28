@@ -13,7 +13,7 @@ export interface PickedMember {
   id: string;
   memberNo: number;
   name: string;
-  phone: string;
+  phone: string | null;
   status: string;
 }
 

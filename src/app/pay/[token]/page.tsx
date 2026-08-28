@@ -20,7 +20,7 @@ import { cn } from '@/lib/utils';
 interface MemberView {
   gymName: string;
   name: string;
-  phone: string;
+  phone: string | null;
   status: string;
   accessEndsAt: string | null;
   daysLeft: number | null;
@@ -108,7 +108,7 @@ export default function PayByTokenPage() {
           <div>
             <p className="text-lg font-semibold">{data.name}</p>
             <p className="text-muted-foreground font-mono text-sm">
-              {data.phone}
+              {data.phone ?? '—'}
             </p>
           </div>
           <div className="border-t pt-3">

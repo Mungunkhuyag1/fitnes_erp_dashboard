@@ -26,7 +26,7 @@ interface Loaded {
   id: string;
   memberNo: number;
   name: string;
-  phone: string;
+  phone: string | null;
   email: string | null;
   note: string | null;
   gender: Gender | null;
@@ -59,7 +59,9 @@ export default function EditMemberPage() {
 function EditForm({ m }: { m: Loaded }) {
   const router = useRouter();
   const [name, setName] = useState(m.name);
-  const [phone, setPhone] = useState(m.phone);
+  // ⚠ Терминалаас импортлосон гишүүн УТАСГҮЙ ирдэг тул `null` байж
+  // болно. Input нь `null`-ыг хүлээж авдаггүй — хоосон мөр болгоно.
+  const [phone, setPhone] = useState(m.phone ?? '');
   const [email, setEmail] = useState(m.email ?? '');
   const [note, setNote] = useState(m.note ?? '');
   const [gender, setGender] = useState<Gender | null>(m.gender);
@@ -69,7 +71,11 @@ function EditForm({ m }: { m: Loaded }) {
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
-  const phoneChanged = phone.replace(/\D/g, '') !== m.phone;
+  const digits = phone.replace(/\D/g, '');
+  /** Утас СОЛИГДОЖ байна — хуучин дугаар байсан тохиолдолд л. */
+  const phoneChanged = !!m.phone && digits !== m.phone;
+  /** Утас АНХ УДАА нэмэгдэж байна — импортлосон гишүүнд түгээмэл. */
+  const phoneAdded = !m.phone && digits.length > 0;
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -137,6 +143,18 @@ function EditForm({ m }: { m: Loaded }) {
                   value={phone}
                   onChange={(e) => setPhone(e.target.value)}
                 />
+                {!m.phone && !phoneAdded && (
+                  <p className="text-destructive rounded-md bg-destructive/10 px-3 py-2 text-xs">
+                    Энэ гишүүн утасгүй байна. Утас оруулах хүртэл Wallet
+                    карт үүсэхгүй, сануулга ч очихгүй.
+                  </p>
+                )}
+                {phoneAdded && (
+                  <p className="rounded-md bg-emerald-500/10 px-3 py-2 text-xs text-emerald-700 dark:text-emerald-400">
+                    Хадгалсны дараа энэ дугаар Loopy-д нэмэгдэж, гишүүн
+                    Wallet карт үүсгэх боломжтой болно.
+                  </p>
+                )}
                 {phoneChanged && (
                   <p className="rounded-md bg-amber-500/10 px-3 py-2 text-xs text-amber-700 dark:text-amber-400">
                     Утас өөрчлөгдөж байна. Хуучин дугаараар шинэ Wallet карт

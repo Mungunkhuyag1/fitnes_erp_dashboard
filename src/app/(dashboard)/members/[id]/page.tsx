@@ -10,6 +10,7 @@ import {
   Pause,
   Pencil,
   Phone,
+  PhoneOff,
   Play,
   Plus,
   RefreshCw,
@@ -64,7 +65,7 @@ interface MemberDetail {
   id: string;
   memberNo: number;
   name: string;
-  phone: string;
+  phone: string | null;
   email: string | null;
   note: string | null;
   gender: 'male' | 'female' | 'other' | null;
@@ -310,7 +311,10 @@ export default function MemberDetailPage() {
 
   return (
     <div className="space-y-5">
-      <PageHeader title={m.name} description={`№${m.memberNo} · ${fmtPhone(m.phone)}`}>
+      <PageHeader
+        title={m.name}
+        description={`№${m.memberNo} · ${m.phone ? fmtPhone(m.phone) : 'утасгүй'}`}
+      >
         <LinkButton variant="ghost" href="/members">
           <ArrowLeft className="size-4" />
           Буцах
@@ -320,6 +324,25 @@ export default function MemberDetailPage() {
           Засах
         </LinkButton>
       </PageHeader>
+
+      {/* ⚠ Утасгүй гишүүн Loopy-тэй ХОЛБОГДОХГҮЙ — утас нь тэнд гол
+          түлхүүр. Терминалаас импортлосон гишүүд бүгд ийм байдаг тул
+          профайл дээр шууд харагдах ёстой. */}
+      {!m.phone && (
+        <div className="border-destructive/30 bg-destructive/8 flex items-start gap-3 rounded-lg border px-4 py-3">
+          <PhoneOff className="text-destructive mt-0.5 size-4 shrink-0" />
+          <div className="min-w-0 flex-1">
+            <p className="text-sm font-medium">Утасны дугаар алга</p>
+            <p className="text-muted-foreground text-xs">
+              Утас оруулах хүртэл Wallet карт үүсэхгүй, эрх дуусах
+              сануулга ч очихгүй.
+            </p>
+          </div>
+          <LinkButton size="sm" variant="outline" href={`/members/${m.id}/edit`}>
+            Утас нэмэх
+          </LinkButton>
+        </div>
+      )}
 
       {m.syncError && (
         <div className="border-destructive/30 bg-destructive/8 flex items-start gap-3 rounded-lg border px-4 py-3">
