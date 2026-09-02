@@ -31,6 +31,8 @@ interface Recipient {
 
 interface Data {
   configured: boolean;
+  /** Ямар дүнгээс дээш шууд мэдэгдэхийг ажилтан харах ёстой. */
+  largePaymentFrom: number;
   events: { value: string; label: string }[];
   recipients: Recipient[];
 }

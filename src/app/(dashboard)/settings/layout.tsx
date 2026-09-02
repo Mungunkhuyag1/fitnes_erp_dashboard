@@ -3,6 +3,7 @@
 import {
   Bell,
   Building2,
+  CalendarOff,
   KeyRound,
   Mail,
   Plug,
@@ -49,6 +50,7 @@ const SECTIONS: { label: string; items: Section[] }[] = [
       { href: '/settings/lockers', label: 'Шүүгээ', icon: KeyRound, min: 'admin' },
       { href: '/settings/reminders', label: 'Сануулга', icon: Bell, min: 'admin' },
       { href: '/settings/staff-users', label: 'Ажилтан', icon: Users, min: 'admin' },
+      { href: '/settings/freeze', label: 'Чөлөө', icon: CalendarOff, min: 'admin' },
       { href: '/settings/mail', label: 'Мэдэгдэл', icon: Mail, min: 'admin' },
       { href: '/settings/connections', label: 'Холболт', icon: Plug, min: 'admin' },
     ],

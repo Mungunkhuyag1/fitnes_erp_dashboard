@@ -48,6 +48,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { MemberFreezeCard } from '@/components/member-freeze-card';
 import { useApi } from '@/hooks/use-api';
 import { api, type Page } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
@@ -417,6 +418,15 @@ export default function MemberDetailPage() {
           </>
         )}
       </div>
+
+      <MemberFreezeCard
+        memberId={id}
+        status={m.status}
+        onChange={() => {
+          reload();
+          reloadMs();
+        }}
+      />
 
       {/* Товч мэдээлэл */}
       <div className="grid gap-4 md:grid-cols-3">
