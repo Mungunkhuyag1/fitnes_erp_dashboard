@@ -18,6 +18,10 @@ export interface PayPackage {
   audienceLabel: string;
   requiresProof: boolean;
   firstTimeOnly: boolean;
+  /** Урамшуулалтай бол анхны утгууд — зурж харуулахад. */
+  basePrice: number | null;
+  baseDays: number | null;
+  promotion: { name: string } | null;
 }
 
 export interface PendingInvoice {
@@ -182,13 +186,29 @@ export function PackagePicker({
                       анх удаа
                     </span>
                   )}
+                  {p.promotion && (
+                    <span className="rounded bg-emerald-500/12 px-1.5 py-0.5 text-[10px] font-medium text-emerald-700 dark:text-emerald-400">
+                      {p.promotion.name}
+                    </span>
+                  )}
                 </span>
                 <span className="text-muted-foreground text-sm">
                   {p.days} хоног
+                  {p.baseDays !== null && p.baseDays !== p.days && (
+                    <span className="text-emerald-600 dark:text-emerald-400">
+                      {" "}
+                      (+{p.days - p.baseDays})
+                    </span>
+                  )}
                   {p.days > 30 && ` · сард ${money(v.perMonth)}`}
                 </span>
               </span>
               <span className="shrink-0 text-right">
+                {p.basePrice !== null && p.basePrice > p.price && (
+                  <span className="text-muted-foreground block text-xs tabular-nums line-through">
+                    {money(p.basePrice)}
+                  </span>
+                )}
                 <span className="block text-base font-semibold tabular-nums">
                   {money(p.price)}
                 </span>

@@ -17,6 +17,7 @@ const LEAF: Record<string, string> = {
   staff: 'Ажилтны эрх',
   lockers: 'Шүүгээ',
   reminders: 'Сануулга',
+  promotions: 'Урамшуулал',
   freeze: 'Чөлөө',
   mail: 'Мэдэгдэл',
   connections: 'Холболт',
