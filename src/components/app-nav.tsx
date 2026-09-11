@@ -3,6 +3,7 @@
 import {
   BarChart3,
   DoorOpen,
+  Gift,
   KeyRound,
   LayoutDashboard,
   MonitorSmartphone,
@@ -50,6 +51,7 @@ export const NAV: NavGroup[] = [
     label: 'Удирдлага',
     items: [
       { href: '/packages', label: 'Багц', icon: Package },
+      { href: '/gift-cards', label: 'Бэлгийн карт', icon: Gift, min: 'manager' },
       { href: '/reports', label: 'Тайлан', icon: BarChart3 },
       { href: '/sync', label: 'Синк', icon: RefreshCw, min: 'manager' },
       { href: '/audit', label: 'Аудит', icon: ShieldCheck, min: 'manager' },

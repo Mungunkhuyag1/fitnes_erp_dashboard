@@ -10,6 +10,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { GiftProgramCard } from "@/components/gift-program-card";
 import { LoopyProgramCard } from "@/components/loopy-program-card";
 import { TerminalConnectionCard } from "@/components/terminal-connection-card";
 import { api } from "@/lib/api";
@@ -114,6 +115,8 @@ export default function ConnectionSettings() {
       </Card>
 
       <LoopyProgramCard />
+
+      <GiftProgramCard />
 
       <TerminalConnectionCard />
     </div>
