@@ -1,9 +1,9 @@
-'use client';
+"use client";
 
-import { Loader2, ScanFace } from 'lucide-react';
-import { useMemo, useState } from 'react';
-import { toast } from 'sonner';
-import { Button } from '@/components/ui/button';
+import { Loader2, ScanFace } from "lucide-react";
+import { useMemo, useState } from "react";
+import { toast } from "sonner";
+import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
@@ -11,19 +11,28 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from '@/components/ui/dialog';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { useApi } from '@/hooks/use-api';
-import { api, type Page } from '@/lib/api';
-import { money } from '@/lib/format';
-import { cn } from '@/lib/utils';
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { useApi } from "@/hooks/use-api";
+import { api, type Page } from "@/lib/api";
+import { money } from "@/lib/format";
+import { cn } from "@/lib/utils";
 
 interface Pkg {
   id: string;
   name: string;
   days: number;
   price: number;
+  /** Хосын багц = 2. Тэр үед хамтрагч сонгох ёстой. */
+  seats: number;
+}
+
+interface MemberOption {
+  id: string;
+  name: string;
+  memberNo: number;
+  phone: string | null;
 }
 
 /**
@@ -50,7 +59,7 @@ export function ExtendDialog({
   onDone: () => void;
 }) {
   const { data: packages } = useApi<Page<Pkg>>(
-    open ? '/packages?active=true&limit=50' : null,
+    open ? "/packages?active=true&limit=50" : null,
   );
   /**
    * `package` (анхдагч) — багц сонгоно. `custom` — дурын хоногоор.
@@ -59,25 +68,35 @@ export function ExtendDialog({
    * тайлбарлавал диалог онгойхдоо тэр сонголт СОНГОГДСОН мэт харагдана.
    * Ресепшн ихэвчлэн багц сонгодог тул анхдагч нь тэр байх ёстой.
    */
-  const [mode, setMode] = useState<'package' | 'custom'>('package');
+  const [mode, setMode] = useState<"package" | "custom">("package");
   const [pkgId, setPkgId] = useState<string | null>(null);
-  const [customDays, setCustomDays] = useState('');
-  const [amount, setAmount] = useState('');
-  const [reason, setReason] = useState('');
+  const [customDays, setCustomDays] = useState("");
+  const [amount, setAmount] = useState("");
+  const [reason, setReason] = useState("");
+  /** Хосын багцын хамтрагч — `seats > 1` үед ЗААВАЛ. */
+  const [partnerId, setPartnerId] = useState<string | null>(null);
+  const [partnerQuery, setPartnerQuery] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   // Дахин дарахад ижил түлхүүр явахын тулд нэг л удаа үүсгэнэ.
-  const idemKey = useMemo(() => (open ? crypto.randomUUID() : ''), [open]);
+  const idemKey = useMemo(() => (open ? crypto.randomUUID() : ""), [open]);
 
-  const custom = mode === 'custom';
+  const custom = mode === "custom";
+  /** Хосын багц сонгосон ч хамтрагч заагаагүй бол илгээхийг хаана. */
+  const needsPartner =
+    (packages?.items.find((p) => p.id === pkgId)?.seats ?? 1) > 1;
   const selected = packages?.items.find((p) => p.id === pkgId);
 
   function pick(p: Pkg) {
-    setMode('package');
+    setMode("package");
     setPkgId(p.id);
     setAmount(String(p.price));
-    setCustomDays('');
+    setCustomDays("");
+    // Багц солиход хамтрагч арилна — өмнөх сонголт санамсаргүй үлдэж
+    // өөр багцад хавсрахаас сэргийлнэ.
+    setPartnerId(null);
+    setPartnerQuery("");
   }
 
   async function submit() {
@@ -88,22 +107,23 @@ export function ExtendDialog({
         packageId: custom ? undefined : (pkgId ?? undefined),
         days: custom ? Number(customDays) : undefined,
         amount: Number(amount || 0),
-        method: custom ? 'manual' : 'cash',
+        method: custom ? "manual" : "cash",
         reason: reason || undefined,
+        partnerMemberId: partnerId ?? undefined,
         idempotencyKey: idemKey,
       });
-      toast.success('Эрх сунгагдлаа', {
-        description: 'Терминал руу автоматаар бичигдэнэ',
+      toast.success("Эрх сунгагдлаа", {
+        description: "Терминал руу автоматаар бичигдэнэ",
       });
       onOpenChange(false);
-      setMode('package');
+      setMode("package");
       setPkgId(null);
-      setCustomDays('');
-      setAmount('');
-      setReason('');
+      setCustomDays("");
+      setAmount("");
+      setReason("");
       onDone();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Алдаа гарлаа');
+      setError(err instanceof Error ? err.message : "Алдаа гарлаа");
     } finally {
       setBusy(false);
     }
@@ -111,13 +131,17 @@ export function ExtendDialog({
 
   const valid = custom
     ? Number(customDays) > 0 && reason.trim().length > 0
-    : !!pkgId;
+    : // Хосын багц сонгосон ч хамтрагч заагаагүй бол илгээхгүй —
+      // сервер татгалзах ч ажилтанд урьдчилан хэлэх нь зөв.
+      !!pkgId && (!needsPartner || !!partnerId);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>{cancelled ? 'Сэргээж сунгах' : 'Эрх сунгах'}</DialogTitle>
+          <DialogTitle>
+            {cancelled ? "Сэргээж сунгах" : "Эрх сунгах"}
+          </DialogTitle>
           <DialogDescription>
             {memberName} — бэлнээр хүлээн авсан төлбөр
           </DialogDescription>
@@ -127,14 +151,14 @@ export function ExtendDialog({
           <div className="flex items-start gap-3 rounded-lg border border-amber-500/30 bg-amber-500/[0.06] px-3 py-2.5">
             <ScanFace className="mt-0.5 size-4 shrink-0 text-amber-600 dark:text-amber-400" />
             <p className="text-muted-foreground text-xs">
-              Энэ гишүүний эрх цуцлагдсан. Сунгалт хийвэл{' '}
+              Энэ гишүүний эрх цуцлагдсан. Сунгалт хийвэл{" "}
               <span className="text-foreground font-medium">
                 хуучин бүртгэл дээрээ сэргэнэ
-              </span>{' '}
-              — түүх, ирц хэвээр үлдэнэ. Цуцлах үед терминалаас устсан тул{' '}
+              </span>{" "}
+              — түүх, ирц хэвээр үлдэнэ. Цуцлах үед терминалаас устсан тул{" "}
               <span className="text-foreground font-medium">
                 царайгаа дахин уншуулах
-              </span>{' '}
+              </span>{" "}
               шаардлагатай.
             </p>
           </div>
@@ -150,10 +174,10 @@ export function ExtendDialog({
                   type="button"
                   onClick={() => pick(p)}
                   className={cn(
-                    'flex items-center justify-between rounded-lg border px-3 py-2.5 text-left transition-colors',
+                    "flex items-center justify-between rounded-lg border px-3 py-2.5 text-left transition-colors",
                     pkgId === p.id
-                      ? 'border-primary bg-primary/5'
-                      : 'hover:bg-accent/50',
+                      ? "border-primary bg-primary/5"
+                      : "hover:bg-accent/50",
                   )}
                 >
                   <span className="text-sm font-medium">{p.name}</span>
@@ -165,13 +189,13 @@ export function ExtendDialog({
               <button
                 type="button"
                 onClick={() => {
-                  setMode('custom');
+                  setMode("custom");
                   setPkgId(null);
-                  setAmount('');
+                  setAmount("");
                 }}
                 className={cn(
-                  'rounded-lg border px-3 py-2.5 text-left text-sm transition-colors',
-                  custom ? 'border-primary bg-primary/5' : 'hover:bg-accent/50',
+                  "rounded-lg border px-3 py-2.5 text-left text-sm transition-colors",
+                  custom ? "border-primary bg-primary/5" : "hover:bg-accent/50",
                 )}
               >
                 Хоногоор (багцгүй)
@@ -187,7 +211,9 @@ export function ExtendDialog({
                   id="days"
                   inputMode="numeric"
                   value={customDays}
-                  onChange={(e) => setCustomDays(e.target.value.replace(/\D/g, ''))}
+                  onChange={(e) =>
+                    setCustomDays(e.target.value.replace(/\D/g, ""))
+                  }
                   placeholder="30"
                 />
               </div>
@@ -197,7 +223,7 @@ export function ExtendDialog({
                   id="amount"
                   inputMode="numeric"
                   value={amount}
-                  onChange={(e) => setAmount(e.target.value.replace(/\D/g, ''))}
+                  onChange={(e) => setAmount(e.target.value.replace(/\D/g, ""))}
                   placeholder="0"
                 />
               </div>
@@ -211,8 +237,42 @@ export function ExtendDialog({
                 id="amount2"
                 inputMode="numeric"
                 value={amount}
-                onChange={(e) => setAmount(e.target.value.replace(/\D/g, ''))}
+                onChange={(e) => setAmount(e.target.value.replace(/\D/g, ""))}
               />
+            </div>
+          )}
+
+          {/* ── Хосын багц: хамтрагч ЗААВАЛ ── */}
+          {(selected?.seats ?? 1) > 1 && (
+            <div className="space-y-2 rounded-lg border border-amber-500/40 bg-amber-500/5 p-3">
+              <Label htmlFor="partner">
+                Хамтрагч
+                <span className="text-destructive"> *</span>
+              </Label>
+              <Input
+                id="partner"
+                value={partnerQuery}
+                onChange={(e) => {
+                  setPartnerQuery(e.target.value);
+                  setPartnerId(null);
+                }}
+                placeholder="Нэр эсвэл утсаар хайх"
+              />
+              {partnerQuery.trim().length >= 2 && !partnerId && (
+                <PartnerResults
+                  query={partnerQuery}
+                  excludeId={memberId}
+                  onPick={(m) => {
+                    setPartnerId(m.id);
+                    setPartnerQuery(`${m.name} · №${m.memberNo}`);
+                  }}
+                />
+              )}
+              <p className="text-muted-foreground text-xs">
+                Дүн хоёулангад ТЭНЦҮҮ хуваарилагдана (
+                {Math.floor(Number(amount || 0) / 2).toLocaleString()}₮ тус
+                бүр). Хоёулаа бүртгэлтэй байх ёстой.
+              </p>
             </div>
           )}
 
@@ -224,7 +284,7 @@ export function ExtendDialog({
               id="reason"
               value={reason}
               onChange={(e) => setReason(e.target.value)}
-              placeholder={custom ? 'Урамшуулал, засвар…' : 'Заавал биш'}
+              placeholder={custom ? "Урамшуулал, засвар…" : "Заавал биш"}
             />
             {custom && (
               <p className="text-muted-foreground text-xs">
@@ -241,7 +301,11 @@ export function ExtendDialog({
         </div>
 
         <DialogFooter>
-          <Button variant="ghost" onClick={() => onOpenChange(false)} disabled={busy}>
+          <Button
+            variant="ghost"
+            onClick={() => onOpenChange(false)}
+            disabled={busy}
+          >
             Цуцлах
           </Button>
           <Button onClick={submit} disabled={busy || !valid}>
@@ -251,5 +315,44 @@ export function ExtendDialog({
         </DialogFooter>
       </DialogContent>
     </Dialog>
+  );
+}
+
+/**
+ * Хамтрагч хайх үр дүн.
+ *
+ * ⚠ Төлбөр төлж буй гишүүнийг өөрийг нь ХАСНА — «өөртэйгөө хос» болох
+ * нь утгагүй бөгөөд backend ч татгалзана.
+ */
+function PartnerResults({
+  query,
+  excludeId,
+  onPick,
+}: {
+  query: string;
+  excludeId: string;
+  onPick: (m: MemberOption) => void;
+}) {
+  const { data } = useApi<{ items: MemberOption[] }>(
+    `/members?limit=5&q=${encodeURIComponent(query.trim())}`,
+  );
+  const rows = (data?.items ?? []).filter((m) => m.id !== excludeId);
+  if (!rows.length) return null;
+  return (
+    <div className="divide-y rounded-md border">
+      {rows.map((m) => (
+        <button
+          key={m.id}
+          type="button"
+          onClick={() => onPick(m)}
+          className="hover:bg-accent/50 flex w-full items-center gap-2 px-3 py-2 text-left text-sm"
+        >
+          <span className="text-muted-foreground font-mono text-xs">
+            №{m.memberNo}
+          </span>
+          <span className="truncate">{m.name}</span>
+        </button>
+      ))}
+    </div>
   );
 }
