@@ -16,7 +16,9 @@ import { NextResponse, type NextRequest } from 'next/server';
  * байгаа тул нээлттэй байх ёстой (эс бөгөөс нэвтрэх шаардана гэсэн
  * тойрог үүснэ).
  */
-const PUBLIC = ['/login', '/forgot-password', '/pay'];
+// `/pay` энд БАЙХГҮЙ: төлбөрийн хуудас winfit.mn руу нүүсэн бөгөөд
+// `next.config.ts`-ийн redirect нь proxy-оос ӨМНӨ ажиллана.
+const PUBLIC = ['/login', '/forgot-password'];
 
 export function proxy(req: NextRequest) {
   const { pathname } = req.nextUrl;

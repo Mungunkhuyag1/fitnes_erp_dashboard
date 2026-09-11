@@ -1,7 +1,27 @@
-import type { NextConfig } from "next";
+import type { NextConfig } from 'next';
+
+/**
+ * Төлбөрийн хуудас нь НҮҮР сайт руу нүүсэн (winfit.mn).
+ *
+ * ⚠ Хуучин холбоосууд ҮЛДЭНЭ: гишүүдэд илгээсэн `/pay/<token>` линк,
+ * хадгалсан хавчуурга, Loopy картан дээрх хаяг. Тэднийг 404 болгож
+ * орхивол гишүүн төлбөрөө хийж чадахгүй болно — тиймээс шилжүүлнэ.
+ */
+const PUBLIC_SITE =
+  process.env.NEXT_PUBLIC_PUBLIC_SITE_URL?.replace(/\/$/, '') ??
+  'https://winfit.mn';
 
 const nextConfig: NextConfig = {
-  /* config options here */
+  async redirects() {
+    return [
+      { source: '/pay', destination: `${PUBLIC_SITE}/pay`, permanent: false },
+      {
+        source: '/pay/:path*',
+        destination: `${PUBLIC_SITE}/pay/:path*`,
+        permanent: false,
+      },
+    ];
+  },
 };
 
 export default nextConfig;
