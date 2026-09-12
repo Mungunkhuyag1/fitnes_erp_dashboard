@@ -8,7 +8,6 @@ import {
   Loader2,
   MoreHorizontal,
   ScanSearch,
-  Trash2,
   Upload,
 } from "lucide-react";
 import { useState } from "react";
@@ -80,12 +79,11 @@ interface Diff {
 interface Detail {
   row: DriftRow;
   push: boolean;
-  remove: boolean;
 }
 
 /** Хийхээр сонгосон үйлдэл — баталгаажуулах цонхонд дамжина. */
 interface Pending {
-  kind: "pull" | "remove";
+  kind: "pull";
   employeeNo: number;
   name: string;
 }
@@ -129,7 +127,7 @@ export function DeviceAuditCard() {
     }
   }
 
-  async function act(kind: "push" | "pull" | "remove", employeeNo: number) {
+  async function act(kind: "push" | "pull", employeeNo: number) {
     setBusy(`${kind}:${employeeNo}`);
     try {
       await api.post(`/sync/run/device-audit/${kind}`, { employeeNo });
@@ -154,13 +152,11 @@ export function DeviceAuditCard() {
     employeeNo,
     name,
     push,
-    remove,
   }: {
     employeeNo: number;
     name: string;
     push: boolean;
-    remove: boolean;
-  }) {
+    }) {
     const running = busy?.endsWith(`:${employeeNo}`);
     return (
       <DropdownMenu>
@@ -203,15 +199,6 @@ export function DeviceAuditCard() {
               >
                 <Download className="size-4" />
                 Терминал → WinFit
-              </DropdownMenuItem>
-            )}
-            {remove && can("admin") && (
-              <DropdownMenuItem
-                variant="destructive"
-                onClick={() => setPending({ kind: "remove", employeeNo, name })}
-              >
-                <Trash2 className="size-4" />
-                Терминалаас устгах
               </DropdownMenuItem>
             )}
           </DropdownMenuGroup>
@@ -299,14 +286,13 @@ export function DeviceAuditCard() {
                   key={r.employeeNo}
                   row={r}
                   onOpen={() =>
-                    setDetail({ row: r, push: true, remove: false })
+                    setDetail({ row: r, push: true })
                   }
                 >
                   <RowMenu
                     employeeNo={r.employeeNo}
                     name={r.name}
                     push
-                    remove={false}
                   />
                 </Row>
               ))}
@@ -323,14 +309,13 @@ export function DeviceAuditCard() {
                   key={r.employeeNo}
                   row={r}
                   onOpen={() =>
-                    setDetail({ row: r, push: true, remove: false })
+                    setDetail({ row: r, push: true })
                   }
                 >
                   <RowMenu
                     employeeNo={r.employeeNo}
                     name={r.name}
                     push
-                    remove={false}
                   />
                 </Row>
               ))}
@@ -348,14 +333,13 @@ export function DeviceAuditCard() {
                   key={r.employeeNo}
                   row={r}
                   onOpen={() =>
-                    setDetail({ row: r, push: false, remove: true })
+                    setDetail({ row: r, push: false })
                   }
                 >
                   <RowMenu
                     employeeNo={r.employeeNo}
                     name={r.name}
                     push={false}
-                    remove
                   />
                 </Row>
               ))}
@@ -373,14 +357,13 @@ export function DeviceAuditCard() {
                   key={r.employeeNo}
                   row={r}
                   onOpen={() =>
-                    setDetail({ row: r, push: true, remove: false })
+                    setDetail({ row: r, push: true })
                   }
                 >
                   <RowMenu
                     employeeNo={r.employeeNo}
                     name={r.name}
                     push
-                    remove={false}
                   />
                 </Row>
               ))}
@@ -436,21 +419,6 @@ export function DeviceAuditCard() {
                 Терминал → WinFit
               </Button>
             )}
-            {detail?.remove && can("admin") && (
-              <Button
-                variant="outline"
-                className="text-destructive"
-                disabled={busy !== null}
-                onClick={() => {
-                  const { employeeNo, name } = detail.row;
-                  setDetail(null);
-                  setPending({ kind: "remove", employeeNo, name });
-                }}
-              >
-                <Trash2 className="size-4" />
-                Терминалаас устгах
-              </Button>
-            )}
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -462,27 +430,16 @@ export function DeviceAuditCard() {
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>
-              {pending?.kind === "remove"
-                ? `№${pending.employeeNo} «${pending.name}»-г терминалаас устгах уу?`
-                : `№${pending?.employeeNo} «${pending?.name}»-г WinFit рүү авах уу?`}
+              {`№${pending?.employeeNo} «${pending?.name}»-г WinFit рүү авах уу?`}
             </AlertDialogTitle>
             <AlertDialogDescription>
-              {pending?.kind === "remove" ? (
-                <>
-                  Царайны бүртгэл нь хамт устана. Энэ хүн дахин орох боломжгүй
-                  болно — заалны ажилтан биш эсэхийг эхлээд шалгана уу.
-                </>
-              ) : (
-                <>
-                  Терминал дээрх нэр, эрхийн огноог WinFit рүү хуулна. Гишүүн
-                  байхгүй бол шинээр үүсгэнэ.
-                  <br />
-                  <br />⚠ Энэ нь хэвийн урсгалын эсрэг чиглэл. Эрхийн огноог
-                  терминалаас авах нь төлбөрийн бүртгэлтэй зөрчилдөж болзошгүй.
-                  Мөн терминалд утасны дугаар байдаггүй тул дараа нь гараар
-                  нөхөх шаардлагатай.
-                </>
-              )}
+              Терминал дээрх нэр, эрхийн огноог WinFit рүү хуулна. Гишүүн
+              байхгүй бол шинээр үүсгэнэ.
+              <br />
+              <br />⚠ Энэ нь хэвийн урсгалын эсрэг чиглэл. Эрхийн огноог
+              терминалаас авах нь төлбөрийн бүртгэлтэй зөрчилдөж болзошгүй.
+              Мөн терминалд утасны дугаар байдаггүй тул дараа нь гараар нөхөх
+              шаардлагатай.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -499,7 +456,7 @@ export function DeviceAuditCard() {
               {busy?.includes(":") && (
                 <Loader2 className="size-4 animate-spin" />
               )}
-              {pending?.kind === "remove" ? "Устгах" : "Авах"}
+              Авах
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
