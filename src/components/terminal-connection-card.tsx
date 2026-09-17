@@ -1,6 +1,13 @@
 'use client';
 
-import { CheckCircle2, Loader2, Radar, Save, XCircle } from 'lucide-react';
+import {
+  AlertTriangle,
+  CheckCircle2,
+  Loader2,
+  Radar,
+  Save,
+  XCircle,
+} from 'lucide-react';
 import { useState } from 'react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
@@ -35,6 +42,9 @@ interface Connection {
   model: string | null;
   firmware: string | null;
   lastSeenAt: string | null;
+  online: boolean;
+  lastError: string | null;
+  lastErrorAt: string | null;
   subnet: string | null;
 }
 
@@ -167,6 +177,32 @@ export function TerminalConnectionCard() {
         ) : (
           data && (
             <>
+              {/*
+                ⚠ Терминал унтарсан үед ЭНД харагдана. Мэйл нь
+                шилжилтэд нэг л удаа явдаг тул хэн нэг нь мэйлээ
+                алдвал энэ самбар л үлдэнэ.
+              */}
+              {!data.online && data.lastError && (
+                <div className="flex items-start gap-2 rounded-md border border-amber-300 bg-amber-50 p-3 text-sm dark:border-amber-900 dark:bg-amber-950/40">
+                  <AlertTriangle className="mt-0.5 size-4 shrink-0 text-amber-600" />
+                  <div className="space-y-1">
+                    <p className="font-medium">Терминал холбогдохгүй байна</p>
+                    <p className="text-muted-foreground break-all">
+                      {data.lastError}
+                    </p>
+                    {data.lastErrorAt && (
+                      <p className="text-muted-foreground text-xs">
+                        {dateTime(data.lastErrorAt)}-аас хойш
+                      </p>
+                    )}
+                    <p className="text-muted-foreground text-xs">
+                      Гишүүд хаалганаас үргэлжлүүлэн орно, ирц ч цугларсаар
+                      байна — терминал өөрөө шийддэг.
+                    </p>
+                  </div>
+                </div>
+              )}
+
               <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
                 <div className="space-y-1.5">
                   <Label htmlFor="ip">
