@@ -464,13 +464,12 @@ export default function MemberDetailPage() {
               хадгална. Байт нь сан руу ороод сангийн хэмжээг олон дахин
               томруулах ёсгүй.
             */}
-            {m.photoPath && (
-              <TerminalImage
-                path={m.photoPath}
-                alt={`${m.name} — терминал дээрх зураг`}
-                className="aspect-square w-28"
-              />
-            )}
+            <TerminalImage
+              path={m.photoPath}
+              alt={`${m.name} — терминал дээрх зураг`}
+              emptyText="Зураг алга"
+              className="aspect-square w-28"
+            />
             <Field label="Царай">
               {m.faceEnrolled ? (
                 <span className="text-emerald-600 dark:text-emerald-400">

@@ -23,10 +23,20 @@ export function TerminalImage({
   path,
   alt,
   className,
+  emptyText,
 }: {
   path: string | null | undefined;
   alt: string;
   className?: string;
+  /**
+   * Зам огт байхгүй үед харуулах бичвэр.
+   *
+   * Өгөөгүй бол ЮУ Ч гарахгүй (хүснэгтийн мөр бүрд хоосон хайрцаг
+   * гарвал нүд ядрана). Гишүүний карт шиг ганц газарт байрлах үед
+   * харин ч эсрэгээр: хэсэг нь бүрмөсөн алга болвол «зураг байдаг
+   * юм болов уу» гэдэг нь ойлгогдохгүй.
+   */
+  emptyText?: string;
 }) {
   /*
    * ⚠ Үр дүнг ЗАМТАЙГАА ХАМТ хадгална. Тусдаа `url`/`failed` төлөв
@@ -62,7 +72,21 @@ export function TerminalImage({
     };
   }, [path]);
 
-  if (!path) return null;
+  if (!path) {
+    if (!emptyText) return null;
+    return (
+      <div
+        className={cn(
+          'text-muted-foreground flex flex-col items-center justify-center gap-1 rounded-lg border border-dashed',
+          className,
+        )}
+        title={alt}
+      >
+        <ImageOff className="size-4" />
+        <span className="text-[10px] leading-none">{emptyText}</span>
+      </div>
+    );
+  }
 
   const current = shot?.path === path ? shot : null;
   const url = current?.url ?? null;
