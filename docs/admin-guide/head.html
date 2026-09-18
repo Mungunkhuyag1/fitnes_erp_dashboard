@@ -1,0 +1,103 @@
+<style>
+  @page { size: A4; margin: 16mm 14mm; }
+
+  html { font-size: 10.5pt; }
+
+  body {
+    font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+    line-height: 1.55;
+    color: #18181b;
+    max-width: none;
+    margin: 0;
+  }
+
+  /* ── Гарчиг ─────────────────────────────────────────────── */
+  h1 {
+    font-size: 1.9rem;
+    border-bottom: 2px solid #18181b;
+    padding-bottom: .3em;
+    /* Бүлэг бүр шинэ хуудсанаас. Эхний гарчигт хэрэггүй — доор нь дарна. */
+    page-break-before: always;
+  }
+  h1:first-of-type { page-break-before: avoid; }
+  h2 { font-size: 1.35rem; margin-top: 1.6em; }
+  h3 { font-size: 1.1rem;  margin-top: 1.3em; }
+  h1, h2, h3, h4 { page-break-after: avoid; }
+
+  /* ── Хүснэгт ────────────────────────────────────────────── */
+  table {
+    border-collapse: collapse;
+    width: 100%;
+    margin: .9em 0;
+    font-size: .88em;
+    page-break-inside: avoid;
+  }
+  th, td {
+    border: 1px solid #d4d4d8;
+    padding: .38em .6em;
+    text-align: left;
+    vertical-align: top;
+  }
+  th { background: #f4f4f5; font-weight: 600; }
+  tr:nth-child(even) td { background: #fafafa; }
+
+  /* ── Зураг ──────────────────────────────────────────────── */
+  img {
+    max-width: 100%;
+    height: auto;
+    border: 1px solid #e4e4e7;
+    border-radius: 6px;
+    display: block;
+    margin: .8em auto;
+    page-break-inside: avoid;
+  }
+
+  /* ── Диаграм ────────────────────────────────────────────── */
+  .mermaid {
+    text-align: center;
+    margin: 1.2em 0;
+    page-break-inside: avoid;
+  }
+  .mermaid svg { max-width: 100%; height: auto; }
+
+  /* ── Бусад ──────────────────────────────────────────────── */
+  blockquote {
+    border-left: 3px solid #a1a1aa;
+    background: #fafafa;
+    margin: 1em 0;
+    padding: .5em .9em;
+    color: #3f3f46;
+  }
+  code {
+    background: #f4f4f5;
+    padding: .1em .35em;
+    border-radius: 3px;
+    font-size: .88em;
+  }
+  pre { page-break-inside: avoid; }
+  pre code { background: none; padding: 0; }
+
+  #TOC { page-break-after: always; }
+  #TOC ul { list-style: none; padding-left: 1.1em; }
+  #TOC > ul { padding-left: 0; }
+  a { color: #18181b; text-decoration: none; }
+
+  header#title-block-header { page-break-after: always; padding-top: 22vh; }
+  header#title-block-header .title { font-size: 2.4rem; border: none; }
+  header#title-block-header .subtitle { font-size: 1.1rem; color: #52525b; }
+</style>
+
+<script src="https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js"></script>
+<script>
+  /*
+   * ⚠ `startOnLoad: true` нь DOMContentLoaded дээр ажиллана. Chrome-ийн
+   * `--print-to-pdf` нь зурагдахаас нь өмнө хэвлэж эхэлж болзошгүй тул
+   * `--virtual-time-budget` өгч хүлээлгэнэ (build.sh-ийг үзнэ үү).
+   */
+  mermaid.initialize({
+    startOnLoad: true,
+    theme: 'neutral',
+    securityLevel: 'loose',
+    flowchart: { useMaxWidth: true, htmlLabels: true },
+  });
+</script>
