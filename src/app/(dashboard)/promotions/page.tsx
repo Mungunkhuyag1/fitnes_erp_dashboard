@@ -1,18 +1,10 @@
 "use client";
 
-import {
-  Layers,
-  Loader2,
-  Pencil,
-  Percent,
-  Plus,
-  Power,
-  Tag,
-  Trash2,
-} from "lucide-react";
+import { Loader2, Pencil, Percent, Plus, Power, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 import { EmptyState } from "@/components/empty-state";
+import { FilterSelect } from "@/components/filter-select";
 import { PageHeader } from "@/components/page-header";
 import { StatCard } from "@/components/stat-card";
 import { Button } from "@/components/ui/button";
@@ -182,6 +174,7 @@ export default function PromotionsPage() {
   /** `null` = хаалттай, `"new"` = шинэ, бусад нь засах ID. */
   const [editing, setEditing] = useState<string | null>(null);
   const [form, setForm] = useState<Form>(BLANK);
+  const [status, setStatus] = useState("");
   const [capOpen, setCapOpen] = useState(false);
   const [cap, setCap] = useState("");
   const [busy, setBusy] = useState<string | null>(null);
@@ -191,6 +184,21 @@ export default function PromotionsPage() {
   const promos = data?.promotions ?? [];
   const live = promos.filter((p) => p.active);
   const idle = promos.filter((p) => !p.active);
+  /*
+   * ⚠ Идэвхтэй нь ЭХЭНД. Хоёр тусдаа блок болгож хуваавал ижил зүйлийг
+   * хоёр өөр хэлбэрээр зурах шаардлага гарч, нүд нь дасахгүй байв.
+   * Нэг жагсаалт — төлөвийг нь шошгоор ялгана.
+   */
+  const shown = promos
+    .filter((p) =>
+      status === "active" ? p.active : status === "idle" ? !p.active : true,
+    )
+    .sort(
+      (a, b) =>
+        Number(b.active) - Number(a.active) ||
+        b.sortOrder - a.sortOrder ||
+        a.name.localeCompare(b.name),
+    );
   const exclusive = live.find((p) => p.exclusive);
   const maxPct = cfg?.promo_max_discount_pct ?? 60;
 
@@ -324,25 +332,53 @@ export default function PromotionsPage() {
       <Card
         className={cn(
           "gap-3",
-          p.exclusive
-            ? "border-amber-500/40 from-amber-500/5 bg-gradient-to-t to-card"
-            : "from-primary/5 to-card bg-gradient-to-t",
+          !p.active
+            ? // Идэвхгүй нь ТАСАРХАЙ хүрээтэй: нэг жагсаалтад байсан ч
+              // «одоо ажиллахгүй байна» гэдэг нь харцаар ялгарна.
+              "border-dashed bg-card"
+            : p.exclusive
+              ? "border-amber-500/40 from-amber-500/5 bg-gradient-to-t to-card"
+              : "from-primary/5 to-card bg-gradient-to-t",
         )}
       >
         <CardHeader>
           <CardDescription>{kindLabel(p.kind)}</CardDescription>
-          <CardTitle className="text-lg leading-tight">{p.name}</CardTitle>
-          {p.exclusive && (
-            <CardAction>
+          <CardTitle
+            className={cn(
+              "text-lg leading-tight",
+              !p.active && "text-muted-foreground",
+            )}
+          >
+            {p.name}
+          </CardTitle>
+          <CardAction className="flex gap-1.5">
+            {p.exclusive && (
               <span className="rounded-md bg-amber-500/12 px-2 py-0.5 text-xs font-medium text-amber-700 dark:text-amber-400">
                 онцгой
               </span>
-            </CardAction>
-          )}
+            )}
+            <span
+              className={cn(
+                "rounded-md px-2 py-0.5 text-xs font-medium",
+                p.active
+                  ? "bg-emerald-500/12 text-emerald-600 dark:text-emerald-400"
+                  : "bg-muted text-muted-foreground",
+              )}
+            >
+              {p.active ? "Идэвхтэй" : "Идэвхгүй"}
+            </span>
+          </CardAction>
         </CardHeader>
 
         <CardContent className="space-y-3">
-          <p className="text-3xl font-semibold tabular-nums">{effect(p)}</p>
+          <p
+            className={cn(
+              "text-3xl font-semibold tabular-nums",
+              !p.active && "text-muted-foreground",
+            )}
+          >
+            {effect(p)}
+          </p>
 
           <dl className="space-y-1.5 text-sm">
             <div className="flex justify-between gap-3">
@@ -374,7 +410,7 @@ export default function PromotionsPage() {
             <div className="flex gap-1.5">
               <Button
                 size="sm"
-                variant="outline"
+                variant={p.active ? "outline" : "default"}
                 className="flex-1"
                 onClick={() => toggle(p)}
                 disabled={busy !== null}
@@ -384,7 +420,7 @@ export default function PromotionsPage() {
                 ) : (
                   <Power className="size-3.5" />
                 )}
-                Унтраах
+                {p.active ? "Унтраах" : "Идэвхжүүлэх"}
               </Button>
               <Button
                 size="icon-sm"
@@ -394,6 +430,19 @@ export default function PromotionsPage() {
               >
                 <Pencil className="size-3.5" />
               </Button>
+              {/* Ашигласан урамшууллыг устгахгүй — статистик нь эзэнгүй
+                  болно. Тиймээс товч нь ч гарахгүй. */}
+              {!p.active && p.stats.uses === 0 && (
+                <Button
+                  size="icon-sm"
+                  variant="ghost"
+                  className="text-destructive"
+                  onClick={() => remove(p)}
+                  disabled={busy !== null}
+                >
+                  <Trash2 className="size-3.5" />
+                </Button>
+              )}
             </div>
           )}
         </CardFooter>
@@ -454,110 +503,61 @@ export default function PromotionsPage() {
         />
       </div>
 
-      {/* ── Идэвхтэй ── */}
-      <section className="space-y-3">
-        <h2 className="text-muted-foreground flex items-center gap-2 text-xs font-medium tracking-wider uppercase">
-          <Layers className="size-3.5" />
-          Идэвхтэй
-        </h2>
+      {/* ── Шүүлтүүр ── */}
+      <div className="flex flex-wrap items-center gap-2">
+        <FilterSelect
+          value={status}
+          onChange={setStatus}
+          options={[
+            { value: "", label: `Бүх төлөв (${promos.length})` },
+            {
+              value: "active",
+              label: `Идэвхтэй (${live.length})`,
+              dot: "bg-emerald-500",
+            },
+            {
+              value: "idle",
+              label: `Идэвхгүй (${idle.length})`,
+              dot: "bg-muted-foreground",
+            },
+          ]}
+          placeholder="Төлөв"
+        />
+      </div>
 
-        {live.length ? (
-          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-            {live.map((p) => (
-              <PromoCard key={p.id} p={p} />
-            ))}
-          </div>
-        ) : (
-          <Card>
-            <CardContent>
-              <EmptyState
-                icon={Percent}
-                title="Идэвхтэй урамшуулал алга"
-                hint="Багцууд энгийн үнээрээ зарагдаж байна. Урамшуулал үүсгээд идэвхжүүлснээр нүүр хуудас болон төлбөрийн дэлгэцэд шууд тусна."
-                action={
-                  admin ? (
-                    <Button size="sm" onClick={openNew}>
-                      <Plus className="size-3.5" />
-                      Шинэ урамшуулал
-                    </Button>
-                  ) : undefined
-                }
-              />
-            </CardContent>
-          </Card>
-        )}
-      </section>
-
-      {/* ── Идэвхгүй ── */}
-      {idle.length > 0 && (
-        <section className="space-y-3">
-          <h2 className="text-muted-foreground flex items-center gap-2 text-xs font-medium tracking-wider uppercase">
-            <Tag className="size-3.5" />
-            Идэвхгүй
-          </h2>
-          <Card>
-            <CardContent className="space-y-1.5">
-              {idle.map((p) => (
-                <div
-                  key={p.id}
-                  className="flex flex-wrap items-center gap-x-3 gap-y-1 rounded-lg border px-3 py-2.5 text-sm"
-                >
-                  <span className="font-medium">{p.name}</span>
-                  <span className="text-muted-foreground tabular-nums">
-                    {effect(p)}
-                  </span>
-                  <span className="bg-muted text-muted-foreground rounded px-1.5 py-0.5 text-[10px]">
-                    {scope(p)}
-                  </span>
-                  {p.exclusive && (
-                    <span className="rounded bg-amber-500/12 px-1.5 py-0.5 text-[10px] font-medium text-amber-700 dark:text-amber-400">
-                      онцгой
-                    </span>
-                  )}
-                  <span className="text-muted-foreground ml-auto text-xs tabular-nums">
-                    {p.stats.uses ? `${p.stats.uses} удаа` : "ашиглаагүй"}
-                  </span>
-                  {admin && (
-                    <>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => toggle(p)}
-                        disabled={busy !== null}
-                      >
-                        {busy === p.id ? (
-                          <Loader2 className="size-3.5 animate-spin" />
-                        ) : (
-                          <Power className="size-3.5" />
-                        )}
-                        Идэвхжүүлэх
-                      </Button>
-                      <Button
-                        size="icon-sm"
-                        variant="ghost"
-                        onClick={() => openEdit(p)}
-                        disabled={busy !== null}
-                      >
-                        <Pencil className="size-3.5" />
-                      </Button>
-                      {p.stats.uses === 0 && (
-                        <Button
-                          size="icon-sm"
-                          variant="ghost"
-                          className="text-destructive"
-                          onClick={() => remove(p)}
-                          disabled={busy !== null}
-                        >
-                          <Trash2 className="size-3.5" />
-                        </Button>
-                      )}
-                    </>
-                  )}
-                </div>
-              ))}
-            </CardContent>
-          </Card>
-        </section>
+      {/* ── Жагсаалт: НЭГ grid, төлөвийг шошгоор ялгана ── */}
+      {shown.length ? (
+        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+          {shown.map((p) => (
+            <PromoCard key={p.id} p={p} />
+          ))}
+        </div>
+      ) : (
+        <Card>
+          <CardContent>
+            <EmptyState
+              icon={Percent}
+              title={
+                promos.length
+                  ? "Энэ шүүлтүүрт таарах урамшуулал алга"
+                  : "Урамшуулал үүсгээгүй байна"
+              }
+              hint={
+                promos.length
+                  ? "Шүүлтүүрээ «Бүх төлөв» болгож бүгдийг харна уу."
+                  : "Багцууд энгийн үнээрээ зарагдаж байна. Урамшуулал үүсгээд идэвхжүүлснээр нүүр хуудас болон төлбөрийн дэлгэцэд шууд тусна."
+              }
+              action={
+                admin && !promos.length ? (
+                  <Button size="sm" onClick={openNew}>
+                    <Plus className="size-3.5" />
+                    Шинэ урамшуулал
+                  </Button>
+                ) : undefined
+              }
+            />
+          </CardContent>
+        </Card>
       )}
 
       <p className="text-muted-foreground text-xs">
