@@ -2,6 +2,12 @@
 
 import { ImageOff, Loader2 } from 'lucide-react';
 import { useEffect, useState } from 'react';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import { api } from '@/lib/api';
 import { cn } from '@/lib/utils';
 
@@ -48,6 +54,7 @@ export function TerminalImage({
     path: string;
     url: string | null;
   } | null>(null);
+  const [zoom, setZoom] = useState(false);
 
   useEffect(() => {
     if (!path) return;
@@ -92,10 +99,26 @@ export function TerminalImage({
   const url = current?.url ?? null;
   const failed = current !== null && current.url === null;
 
+  /*
+   * Ачаалагдсан зураг нь ТОВЧ болно: жижиг хайрцагт царай танихад
+   * хэцүү, ирцийн кадраас хэн болохыг ялгах бүр ч хэцүү. Дарвал
+   * бүтэн хэмжээгээр нээнэ.
+   */
+  const Frame = url ? 'button' : 'div';
+
   return (
-    <div
+    <>
+    <Frame
+      {...(url
+        ? {
+            type: 'button' as const,
+            onClick: () => setZoom(true),
+            'aria-label': `${alt} — томруулах`,
+          }
+        : {})}
       className={cn(
         'bg-muted text-muted-foreground flex items-center justify-center overflow-hidden rounded-lg',
+        url && 'cursor-zoom-in transition-opacity hover:opacity-90',
         className,
       )}
       /* Татагдаагүй үед ЯАГААД гэдгийг хэлнэ — хоосон дүрс нь
@@ -114,6 +137,23 @@ export function TerminalImage({
       ) : (
         <Loader2 className="size-4 animate-spin" />
       )}
-    </div>
+    </Frame>
+
+      {url && (
+        <Dialog open={zoom} onOpenChange={setZoom}>
+          <DialogContent className="sm:max-w-2xl">
+            <DialogHeader>
+              <DialogTitle>{alt}</DialogTitle>
+            </DialogHeader>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={url}
+              alt={alt}
+              className="max-h-[70svh] w-full rounded-lg object-contain"
+            />
+          </DialogContent>
+        </Dialog>
+      )}
+    </>
   );
 }
