@@ -1,0 +1,95 @@
+'use client';
+
+import { ImageOff, Loader2 } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { api } from '@/lib/api';
+import { cn } from '@/lib/utils';
+
+/**
+ * Терминал дээрх зураг — ирцийн кадр, гишүүний царай.
+ *
+ * ★ ЯАГААД ЭНГИЙН `<img src>` БИШ ВЭ
+ *
+ * Зам нь терминалын ДОТООД хаяг бөгөөд digest нэвтрэлт шаарддаг. Мөн
+ * WinFit-ийн токен нь `localStorage`-д байдаг тул `<img>` түүнийг
+ * дамжуулж чадахгүй. Backend дамжуулагчаас fetch-ээр татаж, `blob:`
+ * хаяг болгоно.
+ *
+ * ⚠ Зураг ОЛДОХГҮЙ байх нь ХЭВИЙН: терминалын санах ой дүүрэхэд хуучин
+ * кадр дарагдана, stub горимд огт байхгүй. Тиймээс алдааг чанга
+ * зарлахгүй — зүгээр л дүрс үзүүлнэ.
+ */
+export function TerminalImage({
+  path,
+  alt,
+  className,
+}: {
+  path: string | null | undefined;
+  alt: string;
+  className?: string;
+}) {
+  /*
+   * ⚠ Үр дүнг ЗАМТАЙГАА ХАМТ хадгална. Тусдаа `url`/`failed` төлөв
+   * баривал зам солигдоход тэднийг эффектийн биед цэвэрлэх шаардлага
+   * гарч, нэмэлт дүрслэл (cascading render) үүсгэнэ. Зам таарахгүй
+   * бол хуучин үр дүнг зүгээр л үл тоомсорлоно.
+   */
+  const [shot, setShot] = useState<{
+    path: string;
+    url: string | null;
+  } | null>(null);
+
+  useEffect(() => {
+    if (!path) return;
+    let revoke: string | null = null;
+    const ctrl = new AbortController();
+
+    api
+      .blob(`/devices/image?path=${encodeURIComponent(path)}`, ctrl.signal)
+      .then((u) => {
+        revoke = u;
+        setShot({ path, url: u });
+      })
+      .catch(() => {
+        if (!ctrl.signal.aborted) setShot({ path, url: null });
+      });
+
+    return () => {
+      ctrl.abort();
+      // ⚠ `blob:` хаягийг суллахгүй бол хуудас нээлттэй байх хугацаанд
+      // санах ойд зураг бүр хуримтлагдана.
+      if (revoke) URL.revokeObjectURL(revoke);
+    };
+  }, [path]);
+
+  if (!path) return null;
+
+  const current = shot?.path === path ? shot : null;
+  const url = current?.url ?? null;
+  const failed = current !== null && current.url === null;
+
+  return (
+    <div
+      className={cn(
+        'bg-muted text-muted-foreground flex items-center justify-center overflow-hidden rounded-lg',
+        className,
+      )}
+      /* Татагдаагүй үед ЯАГААД гэдгийг хэлнэ — хоосон дүрс нь
+         «зураг байхгүй» гэж ойлгогдож, маргаан шийдэхэд төөрөгдүүлнэ. */
+      title={
+        failed
+          ? `${alt} — татагдсангүй. Терминал холбогдохгүй эсвэл зураг нь дарагдсан байна.`
+          : alt
+      }
+    >
+      {url ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img src={url} alt={alt} className="size-full object-cover" />
+      ) : failed ? (
+        <ImageOff className="size-4" />
+      ) : (
+        <Loader2 className="size-4 animate-spin" />
+      )}
+    </div>
+  );
+}

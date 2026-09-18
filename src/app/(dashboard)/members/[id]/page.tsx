@@ -32,6 +32,7 @@ import { GENDER_LABEL } from '@/components/gender-picker';
 import { ExtendDialog } from '@/components/extend-dialog';
 import { LinkButton } from '@/components/link-button';
 import { PageHeader } from '@/components/page-header';
+import { TerminalImage } from '@/components/terminal-image';
 import { DaysLeft, StatusBadge } from '@/components/status-badge';
 import {
   AlertDialog,
@@ -79,6 +80,8 @@ interface MemberDetail {
   daysLeft: number | null;
   faceEnrolled: boolean;
   faceEnrolledAt: string | null;
+  /** Терминал дээрх царайн зургийн ЗАМ — хостгүй. */
+  photoPath: string | null;
   hikSyncedAt: string | null;
   syncError: string | null;
   hasCard: boolean;
@@ -456,6 +459,18 @@ export default function MemberDetailPage() {
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
+            {/*
+              Царайн зураг нь терминал дээр байдаг — WinFit зөвхөн ЗАМЫГ
+              хадгална. Байт нь сан руу ороод сангийн хэмжээг олон дахин
+              томруулах ёсгүй.
+            */}
+            {m.photoPath && (
+              <TerminalImage
+                path={m.photoPath}
+                alt={`${m.name} — терминал дээрх зураг`}
+                className="aspect-square w-28"
+              />
+            )}
             <Field label="Царай">
               {m.faceEnrolled ? (
                 <span className="text-emerald-600 dark:text-emerald-400">

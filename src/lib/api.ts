@@ -144,7 +144,26 @@ async function request<T>(path: string, opts: RequestOptions = {}): Promise<T> {
   return (await res.json()) as T;
 }
 
+/**
+ * ЗУРАГ татах — `<img src>` нь толгой дамжуулж чаддаггүй.
+ *
+ * Токеныг `localStorage`-д хадгалдаг тул зургийг энгийн `src`-ээр авч
+ * чадахгүй: нэвтрэлт явахгүй. Хаягт токен залгах нь лог, түүх,
+ * referrer-ээр алдагдах эрсдэлтэй. Тиймээс fetch-ээр татаж, `blob:`
+ * хаяг болгож өгнө.
+ */
+async function blob(path: string, signal?: AbortSignal): Promise<string> {
+  const t = getToken();
+  const res = await fetch(`${BASE}${path}`, {
+    headers: t ? { Authorization: `Bearer ${t}` } : {},
+    signal,
+  });
+  if (!res.ok) throw new ApiError(res.status, `Зураг татагдсангүй (${res.status})`);
+  return URL.createObjectURL(await res.blob());
+}
+
 export const api = {
+  blob,
   get: <T>(path: string, signal?: AbortSignal) => request<T>(path, { signal }),
   post: <T>(path: string, body?: unknown) =>
     request<T>(path, { method: 'POST', body }),

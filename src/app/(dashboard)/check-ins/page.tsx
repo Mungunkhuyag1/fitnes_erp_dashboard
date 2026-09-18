@@ -17,6 +17,7 @@ import { DataTable, type Column } from '@/components/data-table';
 import { EmptyState } from '@/components/empty-state';
 import { FilterSelect, type FilterOption } from '@/components/filter-select';
 import { PageHeader } from '@/components/page-header';
+import { TerminalImage } from '@/components/terminal-image';
 import { StatCard } from '@/components/stat-card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -37,6 +38,8 @@ interface EventRow {
   granted: boolean;
   reasonLabel: string;
   verifyMode: string | null;
+  /** Уншуулах үеийн зургийн ЗАМ — терминал дээр байдаг. */
+  picturePath: string | null;
 }
 
 interface Stats {
@@ -169,6 +172,27 @@ export default function CheckInsPage() {
           <XCircle className="text-destructive size-4" />
         ),
       className: 'w-10',
+    },
+    {
+      key: 'shot',
+      header: '',
+      /*
+       * Уншуулах үеийн кадр. «Энэ хүн үнэхээр орсон уу» гэсэн маргааныг
+       * шийддэг цорын ганц нотолгоо.
+       *
+       * ⚠ Зураг нь терминал дээр байдаг — WinFit зөвхөн замыг хадгална.
+       * Терминалын санах ой дүүрэхэд хуучин кадр дарагдана.
+       */
+      cell: (e) =>
+        e.picturePath ? (
+          <TerminalImage
+            path={e.picturePath}
+            alt="Уншуулах үеийн зураг"
+            className="size-10"
+          />
+        ) : null,
+      className: 'w-14',
+      hideOnMobile: true,
     },
     {
       key: 'when',
