@@ -8,7 +8,6 @@ import {
   Mail,
   Plug,
   ShieldCheck,
-  Tag,
   User,
   Users,
 } from 'lucide-react';
@@ -51,7 +50,6 @@ const SECTIONS: { label: string; items: Section[] }[] = [
       { href: '/settings/lockers', label: 'Шүүгээ', icon: KeyRound, min: 'admin' },
       { href: '/settings/reminders', label: 'Сануулга', icon: Bell, min: 'admin' },
       { href: '/settings/staff-users', label: 'Ажилтан', icon: Users, min: 'admin' },
-      { href: '/settings/promotions', label: 'Урамшуулал', icon: Tag, min: 'admin' },
       { href: '/settings/freeze', label: 'Чөлөө', icon: CalendarOff, min: 'admin' },
       { href: '/settings/mail', label: 'Мэдэгдэл', icon: Mail, min: 'admin' },
       { href: '/settings/connections', label: 'Холболт', icon: Plug, min: 'admin' },

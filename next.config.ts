@@ -20,6 +20,16 @@ const nextConfig: NextConfig = {
         destination: `${PUBLIC_SITE}/pay/:path*`,
         permanent: false,
       },
+      /*
+       * Урамшуулал тохиргооноос ҮНДСЭН цэс рүү нүүсэн. Админы
+       * хавчуурга, зуршил хоёр хоёулаа хуучин хаяг руу заасаар байх
+       * тул 404 болгож орхихгүй.
+       */
+      {
+        source: '/settings/promotions',
+        destination: '/promotions',
+        permanent: true,
+      },
     ];
   },
 };

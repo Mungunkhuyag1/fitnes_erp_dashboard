@@ -1,14 +1,27 @@
 "use client";
 
-import { Layers, Loader2, Pencil, Plus, Power, Tag, Trash2 } from "lucide-react";
+import {
+  Layers,
+  Loader2,
+  Pencil,
+  Percent,
+  Plus,
+  Power,
+  Tag,
+  Trash2,
+} from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
+import { EmptyState } from "@/components/empty-state";
+import { PageHeader } from "@/components/page-header";
+import { StatCard } from "@/components/stat-card";
 import { Button } from "@/components/ui/button";
 import {
   Card,
   CardAction,
   CardContent,
   CardDescription,
+  CardFooter,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
@@ -32,6 +45,7 @@ import {
 } from "@/components/ui/select";
 import { useApi } from "@/hooks/use-api";
 import { api } from "@/lib/api";
+import { useAuth } from "@/lib/auth";
 import { date, money } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
@@ -69,13 +83,46 @@ interface Settings {
   promo_max_discount_pct: number;
 }
 
-/** Төрөл бүрд утга нь юуг илэрхийлэх вэ. */
+/** Диалог доторх утгын нэгж. */
 const UNIT: Record<Kind, string> = {
   percent: "%",
   amount: "₮ хөнгөлнө",
   fixed_price: "₮ болгоно",
   bonus_days: "хоног нэмнэ",
 };
+
+/**
+ * Урамшуулал ЮУ хийхийг нэг мөрөөр.
+ *
+ * Жагсаалт хармагц «энэ хэдээр хямдруулдаг вэ» гэдгийг уншилгүйгээр
+ * ойлгох ёстой — тиймээс төрөл бүрд өөр бичиглэл.
+ */
+function effect(p: Promo): string {
+  switch (p.kind) {
+    case "percent":
+      return `−${p.value}%`;
+    case "amount":
+      return `−${money(p.value)}`;
+    case "fixed_price":
+      return money(p.value);
+    case "bonus_days":
+      return `+${p.value} хоног`;
+  }
+}
+
+function channelText(ch: string[]): string {
+  const on = ch.includes("online");
+  const rec = ch.includes("reception");
+  if (on && rec) return "Онлайн ба ресепшн";
+  if (on) return "Зөвхөн онлайн";
+  if (rec) return "Зөвхөн ресепшн";
+  return "Хаана ч биш";
+}
+
+function periodText(p: Promo): string {
+  if (!p.startsAt && !p.endsAt) return "Хязгааргүй";
+  return `${p.startsAt ? date(p.startsAt) : "…"} – ${p.endsAt ? date(p.endsAt) : "…"}`;
+}
 
 interface Form {
   name: string;
@@ -128,16 +175,34 @@ function toIso(day: string, edge: "start" | "end"): string | null {
   return new Date(`${day}T${time}+08:00`).toISOString();
 }
 
-export default function PromotionSettings() {
+export default function PromotionsPage() {
+  const { can } = useAuth();
   const { data, reload } = useApi<Data>("/promotions");
   const { data: cfg, reload: reloadCfg } = useApi<Settings>("/settings");
   /** `null` = хаалттай, `"new"` = шинэ, бусад нь засах ID. */
   const [editing, setEditing] = useState<string | null>(null);
   const [form, setForm] = useState<Form>(BLANK);
-  const [cap, setCap] = useState<string | null>(null);
+  const [capOpen, setCapOpen] = useState(false);
+  const [cap, setCap] = useState("");
   const [busy, setBusy] = useState<string | null>(null);
 
+  const admin = can("admin");
   const packages = data?.packages ?? [];
+  const promos = data?.promotions ?? [];
+  const live = promos.filter((p) => p.active);
+  const idle = promos.filter((p) => !p.active);
+  const exclusive = live.find((p) => p.exclusive);
+  const maxPct = cfg?.promo_max_discount_pct ?? 60;
+
+  const totals = promos.reduce(
+    (a, p) => ({
+      uses: a.uses + p.stats.uses,
+      /** ⚠ Хоног нэмэх урамшууллыг ₮ дүнд НЭМЭХГҮЙ — өөр нэгж. */
+      value: a.value + (p.kind === "bonus_days" ? 0 : p.stats.totalValue),
+      days: a.days + (p.kind === "bonus_days" ? p.stats.totalValue : 0),
+    }),
+    { uses: 0, value: 0, days: 0 },
+  );
 
   function openNew() {
     setForm(BLANK);
@@ -227,11 +292,9 @@ export default function PromotionSettings() {
   async function saveCap() {
     setBusy("cap");
     try {
-      await api.patch("/settings", {
-        promo_max_discount_pct: Number(cap),
-      });
+      await api.patch("/settings", { promo_max_discount_pct: Number(cap) });
       toast.success("Хадгаллаа");
-      setCap(null);
+      setCapOpen(false);
       reloadCfg();
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Алдаа");
@@ -239,11 +302,6 @@ export default function PromotionSettings() {
       setBusy(null);
     }
   }
-
-  const live = data?.promotions.filter((p) => p.active) ?? [];
-  const stacking = live.filter((p) => !p.exclusive);
-  const exclusive = live.find((p) => p.exclusive);
-  const maxPct = cfg?.promo_max_discount_pct ?? 60;
 
   /** Аль багцад үйлчлэх вэ — хоосон бол бүгдэд. */
   function scope(p: Promo): string {
@@ -257,95 +315,67 @@ export default function PromotionSettings() {
       : names.join(", ");
   }
 
-  return (
-    <div className="space-y-4">
-      <Card>
+  const kindLabel = (k: Kind) =>
+    data?.kinds.find((x) => x.value === k)?.label ?? k;
+
+  /** Нэг урамшууллын хайрцаг — идэвхтэй бүлэгт. */
+  function PromoCard({ p }: { p: Promo }) {
+    return (
+      <Card
+        className={cn(
+          "gap-3",
+          p.exclusive
+            ? "border-amber-500/40 from-amber-500/5 bg-gradient-to-t to-card"
+            : "from-primary/5 to-card bg-gradient-to-t",
+        )}
+      >
         <CardHeader>
-          <CardTitle className="text-sm">Урамшуулал</CardTitle>
-          <CardDescription>
-            Идэвхтэй урамшууллуудаас <strong>багцад нь тохирсон</strong> нь
-            бүгд давхарлана. Хөнгөлөлт бүрийг <strong>анхны үнээс</strong>{" "}
-            тооцоод нийлбэрээр хасна. <strong>Онцгой</strong> гэж тэмдэглэсэн
-            урамшуулал тохирвол зөвхөн тэр үйлчилнэ.
-          </CardDescription>
-          <CardAction>
-            <Button size="sm" variant="outline" onClick={openNew}>
-              <Plus className="size-3.5" />
-              Шинэ урамшуулал
-            </Button>
-          </CardAction>
+          <CardDescription>{kindLabel(p.kind)}</CardDescription>
+          <CardTitle className="text-lg leading-tight">{p.name}</CardTitle>
+          {p.exclusive && (
+            <CardAction>
+              <span className="rounded-md bg-amber-500/12 px-2 py-0.5 text-xs font-medium text-amber-700 dark:text-amber-400">
+                онцгой
+              </span>
+            </CardAction>
+          )}
         </CardHeader>
 
-        <CardContent className="space-y-2">
-          {exclusive ? (
-            <p className="flex items-start gap-2 rounded-lg border border-amber-500/40 bg-amber-500/8 px-3 py-2.5 text-sm">
-              <Tag className="mt-0.5 size-4 shrink-0 text-amber-600 dark:text-amber-400" />
-              <span>
-                <strong>{exclusive.name}</strong> нь онцгой урамшуулал —
-                тохирсон багцад зөвхөн энэ үйлчилнэ.
-                {stacking.length > 0 &&
-                  ` Бусад ${stacking.length} урамшуулал зөвхөн энэ нь хамаарахгүй багцад ажиллана.`}
-              </span>
-            </p>
-          ) : live.length ? (
-            <p className="flex items-start gap-2 rounded-lg border border-emerald-500/40 bg-emerald-500/8 px-3 py-2.5 text-sm">
-              <Layers className="mt-0.5 size-4 shrink-0 text-emerald-600 dark:text-emerald-400" />
-              <span>
-                <strong>{live.length}</strong> урамшуулал идэвхтэй — нэг багцад
-                хэд нь тохирвол тэд давхарлана. Нийт хөнгөлөлт{" "}
-                <strong>{maxPct}%</strong>-иас хэтрэхгүй.
-              </span>
-            </p>
-          ) : (
-            <p className="text-muted-foreground text-sm">
-              Идэвхтэй урамшуулал алга. Багцууд энгийн үнээрээ зарагдана.
-            </p>
-          )}
+        <CardContent className="space-y-3">
+          <p className="text-3xl font-semibold tabular-nums">{effect(p)}</p>
 
-          {data?.promotions.map((p) => (
-            <div
-              key={p.id}
-              className={cn(
-                "flex flex-wrap items-center gap-x-3 gap-y-1 rounded-lg border px-3 py-2.5 text-sm",
-                p.active && "border-emerald-500/40 bg-emerald-500/5",
-              )}
-            >
-              <span className="font-medium">{p.name}</span>
-              <span className="text-muted-foreground">
-                {p.value}
-                {UNIT[p.kind]}
-              </span>
-              {p.exclusive && (
-                <span className="rounded bg-amber-500/12 px-1.5 py-0.5 text-[10px] font-medium text-amber-700 dark:text-amber-400">
-                  онцгой
-                </span>
-              )}
-              <span className="bg-muted text-muted-foreground rounded px-1.5 py-0.5 text-[10px]">
-                {scope(p)}
-              </span>
-              {p.channels.length === 1 && (
-                <span className="bg-muted text-muted-foreground rounded px-1.5 py-0.5 text-[10px]">
-                  {p.channels[0] === "online" ? "зөвхөн онлайн" : "зөвхөн ресепшн"}
-                </span>
-              )}
-              {(p.startsAt || p.endsAt) && (
-                <span className="text-muted-foreground text-xs">
-                  {p.startsAt ? date(p.startsAt) : "…"} –{" "}
-                  {p.endsAt ? date(p.endsAt) : "…"}
-                </span>
-              )}
-              <span className="text-muted-foreground ml-auto text-xs tabular-nums">
-                {p.stats.uses
-                  ? `${p.stats.uses} удаа · ${p.stats.members} хүн${
-                      p.kind === "bonus_days"
-                        ? ` · ${p.stats.totalValue} хоног`
-                        : ` · ${money(p.stats.totalValue)}`
-                    }`
-                  : "ашиглаагүй"}
-              </span>
+          <dl className="space-y-1.5 text-sm">
+            <div className="flex justify-between gap-3">
+              <dt className="text-muted-foreground">Багц</dt>
+              <dd className="min-w-0 truncate text-right">{scope(p)}</dd>
+            </div>
+            <div className="flex justify-between gap-3">
+              <dt className="text-muted-foreground">Хугацаа</dt>
+              <dd className="text-right">{periodText(p)}</dd>
+            </div>
+            <div className="flex justify-between gap-3">
+              <dt className="text-muted-foreground">Хаана</dt>
+              <dd className="text-right">{channelText(p.channels)}</dd>
+            </div>
+          </dl>
+        </CardContent>
+
+        <CardFooter className="flex-col items-stretch gap-3 border-t pt-3">
+          <p className="text-muted-foreground text-xs tabular-nums">
+            {p.stats.uses
+              ? `${p.stats.uses} удаа · ${p.stats.members} хүн · ${
+                  p.kind === "bonus_days"
+                    ? `${p.stats.totalValue} хоног`
+                    : money(p.stats.totalValue)
+                }`
+              : "Хараахан ашиглаагүй"}
+          </p>
+          {admin && (
+            <div className="flex gap-1.5">
               <Button
                 size="sm"
-                variant={p.active ? "default" : "outline"}
+                variant="outline"
+                className="flex-1"
                 onClick={() => toggle(p)}
                 disabled={busy !== null}
               >
@@ -354,7 +384,7 @@ export default function PromotionSettings() {
                 ) : (
                   <Power className="size-3.5" />
                 )}
-                {p.active ? "Унтраах" : "Идэвхжүүлэх"}
+                Унтраах
               </Button>
               <Button
                 size="icon-sm"
@@ -364,59 +394,216 @@ export default function PromotionSettings() {
               >
                 <Pencil className="size-3.5" />
               </Button>
-              {p.stats.uses === 0 && (
-                <Button
-                  size="icon-sm"
-                  variant="ghost"
-                  className="text-destructive"
-                  onClick={() => remove(p)}
-                  disabled={busy !== null}
-                >
-                  <Trash2 className="size-3.5" />
-                </Button>
-              )}
             </div>
-          ))}
-
-          {data?.promotions.length === 0 && (
-            <p className="text-muted-foreground text-sm">
-              Урамшуулал үүсгээгүй байна.
-            </p>
           )}
-        </CardContent>
+        </CardFooter>
       </Card>
+    );
+  }
 
-      {/* ── Давхарлалтын хамгаалалт ── */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-sm">Хөнгөлөлтийн дээд хязгаар</CardTitle>
-          <CardDescription>
-            Давхарласан урамшууллын нийт хөнгөлөлт багцын үнийн энэ хувиас
-            хэтрэхгүй. Санамсаргүй давхцалаас болж багц бараг үнэгүй
-            зарагдахаас сэргийлнэ — <strong>ганц</strong> урамшуулалд ч
-            үйлчилнэ.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="flex flex-wrap items-end gap-2">
-            <div className="space-y-1.5">
-              <Label htmlFor="cap">Дээд хязгаар (%)</Label>
-              <Input
-                id="cap"
-                inputMode="numeric"
-                className="w-24"
-                value={cap ?? String(maxPct)}
-                onChange={(e) =>
-                  setCap(e.target.value.replace(/\D/g, "").slice(0, 3))
+  return (
+    <div className="space-y-5">
+      <PageHeader
+        title="Урамшуулал"
+        description="Хөнгөлөлт, бэлэг — багц бүрд чиглүүлж болно"
+      >
+        {admin && (
+          <Button onClick={openNew}>
+            <Plus className="size-4" />
+            Шинэ урамшуулал
+          </Button>
+        )}
+      </PageHeader>
+
+      {/* ── Үзүүлэлт ── */}
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+        <StatCard
+          label="Идэвхтэй урамшуулал"
+          value={live.length}
+          suffix={promos.length ? `/ ${promos.length}` : undefined}
+          sub={
+            exclusive
+              ? `«${exclusive.name}» онцгой — бусад нь тооцогдохгүй`
+              : live.length > 1
+                ? "Багцад нь тохирсон нь бүгд давхарлана"
+                : "Багцууд энгийн үнээрээ зарагдана"
+          }
+        />
+        <StatCard
+          label="Нийт хөнгөлсөн"
+          value={money(totals.value)}
+          sub={
+            totals.uses
+              ? `${totals.uses} удаа${totals.days ? ` · ${totals.days} хоног бэлэглэсэн` : ""}`
+              : "Хараахан ашиглаагүй"
+          }
+        />
+        <StatCard
+          label="Хөнгөлөлтийн дээд хязгаар"
+          value={`${maxPct}%`}
+          sub="Давхарласан хөнгөлөлт үүнээс хэтрэхгүй"
+          footL={admin ? "Дарж өөрчилнө" : undefined}
+          onClick={
+            admin
+              ? () => {
+                  setCap(String(maxPct));
+                  setCapOpen(true);
+                }
+              : undefined
+          }
+        />
+      </div>
+
+      {/* ── Идэвхтэй ── */}
+      <section className="space-y-3">
+        <h2 className="text-muted-foreground flex items-center gap-2 text-xs font-medium tracking-wider uppercase">
+          <Layers className="size-3.5" />
+          Идэвхтэй
+        </h2>
+
+        {live.length ? (
+          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+            {live.map((p) => (
+              <PromoCard key={p.id} p={p} />
+            ))}
+          </div>
+        ) : (
+          <Card>
+            <CardContent>
+              <EmptyState
+                icon={Percent}
+                title="Идэвхтэй урамшуулал алга"
+                hint="Багцууд энгийн үнээрээ зарагдаж байна. Урамшуулал үүсгээд идэвхжүүлснээр нүүр хуудас болон төлбөрийн дэлгэцэд шууд тусна."
+                action={
+                  admin ? (
+                    <Button size="sm" onClick={openNew}>
+                      <Plus className="size-3.5" />
+                      Шинэ урамшуулал
+                    </Button>
+                  ) : undefined
                 }
               />
-            </div>
+            </CardContent>
+          </Card>
+        )}
+      </section>
+
+      {/* ── Идэвхгүй ── */}
+      {idle.length > 0 && (
+        <section className="space-y-3">
+          <h2 className="text-muted-foreground flex items-center gap-2 text-xs font-medium tracking-wider uppercase">
+            <Tag className="size-3.5" />
+            Идэвхгүй
+          </h2>
+          <Card>
+            <CardContent className="space-y-1.5">
+              {idle.map((p) => (
+                <div
+                  key={p.id}
+                  className="flex flex-wrap items-center gap-x-3 gap-y-1 rounded-lg border px-3 py-2.5 text-sm"
+                >
+                  <span className="font-medium">{p.name}</span>
+                  <span className="text-muted-foreground tabular-nums">
+                    {effect(p)}
+                  </span>
+                  <span className="bg-muted text-muted-foreground rounded px-1.5 py-0.5 text-[10px]">
+                    {scope(p)}
+                  </span>
+                  {p.exclusive && (
+                    <span className="rounded bg-amber-500/12 px-1.5 py-0.5 text-[10px] font-medium text-amber-700 dark:text-amber-400">
+                      онцгой
+                    </span>
+                  )}
+                  <span className="text-muted-foreground ml-auto text-xs tabular-nums">
+                    {p.stats.uses ? `${p.stats.uses} удаа` : "ашиглаагүй"}
+                  </span>
+                  {admin && (
+                    <>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => toggle(p)}
+                        disabled={busy !== null}
+                      >
+                        {busy === p.id ? (
+                          <Loader2 className="size-3.5 animate-spin" />
+                        ) : (
+                          <Power className="size-3.5" />
+                        )}
+                        Идэвхжүүлэх
+                      </Button>
+                      <Button
+                        size="icon-sm"
+                        variant="ghost"
+                        onClick={() => openEdit(p)}
+                        disabled={busy !== null}
+                      >
+                        <Pencil className="size-3.5" />
+                      </Button>
+                      {p.stats.uses === 0 && (
+                        <Button
+                          size="icon-sm"
+                          variant="ghost"
+                          className="text-destructive"
+                          onClick={() => remove(p)}
+                          disabled={busy !== null}
+                        >
+                          <Trash2 className="size-3.5" />
+                        </Button>
+                      )}
+                    </>
+                  )}
+                </div>
+              ))}
+            </CardContent>
+          </Card>
+        </section>
+      )}
+
+      <p className="text-muted-foreground text-xs">
+        Идэвхтэй урамшууллуудаас <strong>багцад нь тохирсон</strong> нь бүгд
+        давхарлана. Хөнгөлөлт бүрийг <strong>анхны үнээс</strong> тооцоод
+        нийлбэрээр хасна; нийт дүн дээд хязгаараас хэтрэхгүй.{" "}
+        <strong>Онцгой</strong> гэж тэмдэглэсэн урамшуулал тохирвол зөвхөн тэр
+        үйлчилнэ. Аль хэдийн үүссэн нэхэмжлэх хуучин үнээрээ үлдэнэ.
+      </p>
+
+      {/* ── Дээд хязгаар ── */}
+      <Dialog open={capOpen} onOpenChange={setCapOpen}>
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Хөнгөлөлтийн дээд хязгаар</DialogTitle>
+            <DialogDescription>
+              Давхарласан урамшууллын нийт хөнгөлөлт багцын үнийн энэ хувиас
+              хэтрэхгүй. Санамсаргүй давхцалаас болж багц бараг үнэгүй
+              зарагдахаас сэргийлнэ — <strong>ганц</strong> урамшуулалд ч
+              үйлчилнэ.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-1.5">
+            <Label htmlFor="cap">Дээд хязгаар (%)</Label>
+            <Input
+              id="cap"
+              inputMode="numeric"
+              className="w-24"
+              value={cap}
+              onChange={(e) =>
+                setCap(e.target.value.replace(/\D/g, "").slice(0, 3))
+              }
+            />
+          </div>
+          <DialogFooter>
             <Button
-              variant="outline"
+              variant="ghost"
+              onClick={() => setCapOpen(false)}
+              disabled={busy !== null}
+            >
+              Болих
+            </Button>
+            <Button
               onClick={saveCap}
               disabled={
                 busy !== null ||
-                cap === null ||
                 cap === "" ||
                 Number(cap) > 100 ||
                 Number(cap) === maxPct
@@ -425,10 +612,11 @@ export default function PromotionSettings() {
               {busy === "cap" && <Loader2 className="size-4 animate-spin" />}
               Хадгалах
             </Button>
-          </div>
-        </CardContent>
-      </Card>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
+      {/* ── Үүсгэх / засах ── */}
       <Dialog
         open={editing !== null}
         onOpenChange={(o) => !o && setEditing(null)}
@@ -480,18 +668,14 @@ export default function PromotionSettings() {
                           ? "30"
                           : "",
                     // Тогтмол үнэ нь давхарлахгүй — заавал онцгой.
-                    exclusive:
-                      kind === "fixed_price" ? true : form.exclusive,
+                    exclusive: kind === "fixed_price" ? true : form.exclusive,
                   });
                 }}
               >
                 <SelectTrigger id="pk">
                   {/* Base UI нь ТҮҮХИЙ утга дамжуулдаг тул шошгыг
                       өөрсдөө гаргана. */}
-                  <SelectValue>
-                    {data?.kinds.find((k) => k.value === form.kind)?.label ??
-                      form.kind}
-                  </SelectValue>
+                  <SelectValue>{kindLabel(form.kind)}</SelectValue>
                 </SelectTrigger>
                 <SelectContent>
                   {data?.kinds.map((k) => (
@@ -659,9 +843,9 @@ export default function PromotionSettings() {
               </div>
             </div>
             <p className="text-muted-foreground text-xs">
-              Хоосон = хязгааргүй. <strong>Дуусах өдөр нь ОРНО</strong> —
-              тухайн өдрийн 23:59 хүртэл үйлчилнэ. Огноо нь идэвхжүүлэлтээс
-              ТУСДАА: идэвхтэй ч огноо нь ирээгүй бол үйлчлэхгүй.
+              Хоосон = хязгааргүй. <strong>Дуусах өдөр нь ОРНО</strong> — тухайн
+              өдрийн 23:59 хүртэл үйлчилнэ. Огноо нь идэвхжүүлэлтээс ТУСДАА:
+              идэвхтэй ч огноо нь ирээгүй бол үйлчлэхгүй.
             </p>
 
             {/* ── Давхарлалт ── */}
@@ -700,9 +884,9 @@ export default function PromotionSettings() {
                   }
                 />
                 <p className="text-muted-foreground text-xs">
-                  ИХ нь түрүүлж хэрэглэгдэнэ. Нийт хөнгөлөлт {maxPct}%-д
-                  хүрэхэд үлдсэн нь таслагдах тул «аль нь бүтнээрээ орох вэ»
-                  гэдгийг энэ шийднэ.
+                  ИХ нь түрүүлж хэрэглэгдэнэ. Нийт хөнгөлөлт {maxPct}%-д хүрэхэд
+                  үлдсэн нь таслагдах тул «аль нь бүтнээрээ орох вэ» гэдгийг энэ
+                  шийднэ.
                 </p>
               </div>
             </div>

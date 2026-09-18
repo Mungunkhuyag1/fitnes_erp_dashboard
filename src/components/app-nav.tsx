@@ -11,6 +11,7 @@ import {
   Receipt,
   RefreshCw,
   ShieldCheck,
+  Tag,
   Users,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
@@ -51,6 +52,7 @@ export const NAV: NavGroup[] = [
     label: 'Удирдлага',
     items: [
       { href: '/packages', label: 'Багц', icon: Package },
+      { href: '/promotions', label: 'Урамшуулал', icon: Tag, min: 'admin' },
       { href: '/gift-cards', label: 'Бэлгийн карт', icon: Gift, min: 'manager' },
       { href: '/reports', label: 'Тайлан', icon: BarChart3 },
       { href: '/sync', label: 'Синк', icon: RefreshCw, min: 'manager' },
