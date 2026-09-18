@@ -1,8 +1,19 @@
 "use client";
 
-import { Gift, Loader2, Plus, RefreshCw, XCircle } from "lucide-react";
+import {
+  Check,
+  Copy,
+  Gift,
+  Loader2,
+  Plus,
+  RefreshCw,
+  Search,
+  XCircle,
+} from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
+import { DataTable, type Column } from "@/components/data-table";
+import { FilterSelect } from "@/components/filter-select";
 import { PageHeader } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
 import {
@@ -50,6 +61,14 @@ interface Data {
   statuses: { value: Status; label: string }[];
 }
 
+/** Шүүлтүүрийн өмнөх цэгийн өнгө — хүснэгтийн шошготой ижил утга. */
+const DOT: Record<string, string> = {
+  issued: "bg-amber-500",
+  enrolled: "bg-primary",
+  used: "bg-muted-foreground",
+  cancelled: "bg-destructive",
+};
+
 const TONE: Record<Status, string> = {
   issued: "bg-amber-500/12 text-amber-700 dark:text-amber-400",
   enrolled: "bg-primary/10 text-primary",
@@ -68,9 +87,138 @@ export default function GiftCardsPage() {
     buyerName: "",
   });
   const [busy, setBusy] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
+  const [q, setQ] = useState("");
+  const [status, setStatus] = useState("");
+
+  async function copyLink() {
+    if (!data?.enrollUrl) return;
+    await navigator.clipboard.writeText(data.enrollUrl);
+    setCopied(true);
+    toast.success("Холбоос хуулагдлаа");
+    // Товчны төлөвийг буцаана — «хуулсан» гэж үүрд үлдэх нь эргэлзээ төрүүлнэ.
+    setTimeout(() => setCopied(false), 2000);
+  }
 
   const label = (s: Status) =>
     data?.statuses.find((x) => x.value === s)?.label ?? s;
+
+  const cards = data?.cards ?? [];
+  const needle = q.trim().toLowerCase();
+  const shown = cards.filter(
+    (c) =>
+      (!status || c.status === status) &&
+      (!needle ||
+        c.recipientName.toLowerCase().includes(needle) ||
+        c.recipientPhone.includes(needle) ||
+        (c.buyerName ?? "").toLowerCase().includes(needle)),
+  );
+
+  /*
+   * ⚠ Сервер тал хуудаслалтгүй (сүүлийн 200 карт) тул `Page` бүтцийг
+   * ЭНД угсарна. Хүснэгт нь нэг хэлбэртэй өгөгдөл хүлээдэг бөгөөд
+   * шүүлт нь клиент талд хийгдэж байгааг далдлах нь буруу байх байсан.
+   */
+  const page = data
+    ? {
+        items: shown,
+        total: shown.length,
+        page: 1,
+        limit: shown.length || 1,
+        totalPages: 1,
+      }
+    : null;
+
+  const columns: Column<GiftRow>[] = [
+    {
+      key: "recipient",
+      header: "Хүлээн авагч",
+      cell: (c) => (
+        <div className="flex items-center gap-2">
+          <Gift className="text-muted-foreground size-4 shrink-0" />
+          <div className="min-w-0">
+            <p className="truncate font-medium">{c.recipientName}</p>
+            <p className="text-muted-foreground font-mono text-xs">
+              {fmtPhone(c.recipientPhone)}
+            </p>
+          </div>
+        </div>
+      ),
+    },
+    {
+      key: "amount",
+      header: "Дүн",
+      cell: (c) => (
+        <span className="font-medium tabular-nums">{money(c.amount)}</span>
+      ),
+    },
+    {
+      key: "buyer",
+      header: "Бэлэглэсэн",
+      cell: (c) => (
+        <span className="text-muted-foreground text-sm">
+          {c.buyerName ?? "—"}
+        </span>
+      ),
+      hideOnMobile: true,
+    },
+    {
+      key: "status",
+      header: "Төлөв",
+      cell: (c) => (
+        <span
+          className={cn(
+            "inline-flex rounded-md px-2 py-0.5 text-xs font-medium whitespace-nowrap",
+            TONE[c.status],
+          )}
+        >
+          {label(c.status)}
+        </span>
+      ),
+    },
+    {
+      key: "at",
+      header: "Огноо",
+      cell: (c) => (
+        <span className="text-muted-foreground font-mono text-xs whitespace-nowrap">
+          {c.usedAt ? dateTime(c.usedAt) : dateTime(c.issuedAt)}
+        </span>
+      ),
+      hideOnMobile: true,
+    },
+    {
+      key: "act",
+      header: "",
+      cell: (c) => (
+        <div className="flex justify-end gap-1">
+          {c.status === "enrolled" && can("reception") && (
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => act(c.id, "use")}
+              disabled={busy !== null}
+            >
+              {busy === c.id && <Loader2 className="size-3.5 animate-spin" />}
+              Ашигласан
+            </Button>
+          )}
+          {(c.status === "issued" || c.status === "enrolled") &&
+            can("manager") && (
+              <Button
+                size="icon-sm"
+                variant="ghost"
+                className="text-destructive"
+                onClick={() => act(c.id, "cancel")}
+                disabled={busy !== null}
+              >
+                <XCircle className="size-3.5" />
+              </Button>
+            )}
+        </div>
+      ),
+      className: "text-right",
+    },
+  ];
 
   async function create() {
     setBusy("create");
@@ -171,87 +319,73 @@ export default function GiftCardsPage() {
               Хүлээн авагчид илгээнэ — зөвшөөрөгдсөн дугаар л карт авч чадна.
             </CardDescription>
           </CardHeader>
-          <CardContent>
-            <code className="bg-muted block truncate rounded px-3 py-2 text-xs">
+          {/*
+            ⚠ `min-w-0` ба `break-all` ХОЁУЛАА хэрэгтэй. Холбоос нь урт
+            токонтой: `truncate` нь `white-space: nowrap` тавьдаг ба Card
+            нь flex багана тул хүүхдийн `min-width: auto` дээр хайрцаг
+            өөрөө сунаж, БҮХ хуудас дэлгэцээс хальж байв.
+          */}
+          <CardContent className="flex flex-wrap items-start gap-2">
+            <code className="bg-muted min-w-0 flex-1 rounded px-3 py-2 text-xs break-all">
               {data.enrollUrl}
             </code>
+            <Button variant="outline" size="sm" onClick={copyLink}>
+              {copied ? (
+                <Check className="size-3.5" />
+              ) : (
+                <Copy className="size-3.5" />
+              )}
+              Хуулах
+            </Button>
           </CardContent>
         </Card>
       )}
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-sm">Картууд</CardTitle>
-          <CardDescription>
-            Хүлээн авагч Wallet-даа авмагц «Wallet шалгах» дарж холбоно. Ресепшн
-            дээр уншуулаад эрхийг <strong>гараар</strong> сунгасны дараа
-            «Ашигласан» гэж тэмдэглэнэ.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-1.5">
-          {data?.cards.map((c) => (
-            <div
-              key={c.id}
-              className="flex flex-wrap items-center gap-x-3 gap-y-1 rounded-lg border px-3 py-2.5 text-sm"
-            >
-              <Gift className="text-muted-foreground size-4 shrink-0" />
-              <span className="font-medium">{c.recipientName}</span>
-              <span className="text-muted-foreground font-mono text-xs">
-                {fmtPhone(c.recipientPhone)}
-              </span>
-              <span className="font-semibold tabular-nums">
-                {money(c.amount)}
-              </span>
-              {c.buyerName && (
-                <span className="text-muted-foreground text-xs">
-                  {c.buyerName}-оос
-                </span>
-              )}
-              <span
-                className={cn(
-                  "rounded px-1.5 py-0.5 text-[10px] font-medium",
-                  TONE[c.status],
-                )}
-              >
-                {label(c.status)}
-              </span>
-              <span className="text-muted-foreground ml-auto shrink-0 font-mono text-xs">
-                {c.usedAt ? dateTime(c.usedAt) : dateTime(c.issuedAt)}
-              </span>
-              {c.status === "enrolled" && can("reception") && (
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => act(c.id, "use")}
-                  disabled={busy !== null}
-                >
-                  {busy === c.id && (
-                    <Loader2 className="size-3.5 animate-spin" />
-                  )}
-                  Ашигласан
-                </Button>
-              )}
-              {(c.status === "issued" || c.status === "enrolled") &&
-                can("manager") && (
-                  <Button
-                    size="icon-sm"
-                    variant="ghost"
-                    className="text-destructive"
-                    onClick={() => act(c.id, "cancel")}
-                    disabled={busy !== null}
-                  >
-                    <XCircle className="size-3.5" />
-                  </Button>
-                )}
-            </div>
-          ))}
-          {data?.cards.length === 0 && (
-            <p className="text-muted-foreground text-sm">
-              Бэлгийн карт үүсгээгүй байна.
-            </p>
-          )}
-        </CardContent>
-      </Card>
+      {/* ── Шүүлтүүр ── */}
+      <div className="flex flex-wrap items-center gap-2">
+        <div className="relative min-w-0 flex-1 sm:max-w-xs">
+          <Search className="text-muted-foreground pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2" />
+          <Input
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+            placeholder="Нэр, утас, бэлэглэсэн хүн"
+            className="pl-9"
+          />
+        </div>
+        <FilterSelect
+          value={status}
+          onChange={setStatus}
+          options={[
+            { value: "", label: `Бүх төлөв (${cards.length})` },
+            ...(data?.statuses ?? []).map((st) => ({
+              value: st.value,
+              label: `${st.label} (${cards.filter((c) => c.status === st.value).length})`,
+              dot: DOT[st.value],
+            })),
+          ]}
+          placeholder="Төлөв"
+        />
+      </div>
+
+      <DataTable
+        data={page}
+        columns={columns}
+        loading={!data}
+        rowKey={(c) => c.id}
+        emptyText={
+          cards.length
+            ? "Энэ шүүлтүүрт таарах карт алга"
+            : "Бэлгийн карт үүсгээгүй байна"
+        }
+        onPageChange={() => undefined}
+      />
+
+      <p className="text-muted-foreground text-xs">
+        Хүлээн авагч Wallet-даа авмагц <strong>«Wallet шалгах»</strong> дарж
+        холбоно. Ресепшн дээр уншуулаад эрхийг <strong>гараар</strong> сунгасны
+        дараа «Ашигласан» гэж тэмдэглэнэ. Картын дуусах хугацааг Loopy дээр
+        программд тохируулсанаар үйлчилнэ.
+      </p>
 
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="sm:max-w-sm">
