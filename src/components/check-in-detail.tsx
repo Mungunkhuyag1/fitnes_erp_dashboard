@@ -39,6 +39,9 @@ interface Detail {
   verifyMode: string | null;
   picturePath: string | null;
   memberNo: number | null;
+  /** Терминал дээр бичигдсэн нэр (регистр салгасан). */
+  terminalName: string | null;
+  terminalRegister: string | null;
   /** Эвент бүртгэгдэх АГШИНД гишүүн холбогдсон эсэх. */
   linkedAtIngest: boolean;
   member: {
@@ -144,6 +147,16 @@ export function CheckInDetail({
                   {data.memberNo ?? '—'}
                 </span>
               </Row>
+              {/* Терминал дээрх нэр — WinFit-ийн бүртгэлээс ТУСДАА.
+                  Хоёулаа байвал зөрүүг нь шалгахад хэрэгтэй. */}
+              {data.terminalName && (
+                <Row label="Терминал дээрх нэр">{data.terminalName}</Row>
+              )}
+              {data.terminalRegister && (
+                <Row label="Регистр">
+                  <span className="font-mono">{data.terminalRegister}</span>
+                </Row>
+              )}
             </div>
 
             {/* ── Гишүүн ───────────────────────────────────────────── */}
@@ -192,8 +205,18 @@ export function CheckInDetail({
                     Тохирох гишүүн байхгүй
                   </div>
                   <p className="text-muted-foreground text-xs">
-                    Терминал дээр №{data.memberNo ?? '—'} гэсэн дугаараар
-                    уншуулсан боловч WinFit-д тэр дугаартай гишүүн алга.
+                    {data.terminalName ? (
+                      <>
+                        Терминал дээр <strong>{data.terminalName}</strong> (№
+                        {data.memberNo ?? '—'}) гэж бүртгэлтэй боловч WinFit-д
+                        тэр дугаартай гишүүн алга.
+                      </>
+                    ) : (
+                      <>
+                        Терминал дээр №{data.memberNo ?? '—'} гэсэн дугаараар
+                        уншуулсан боловч WinFit-д тэр дугаартай гишүүн алга.
+                      </>
+                    )}{' '}
                     Терминалаас гишүүдийг импортлоход холбогдоно.
                   </p>
                 </div>

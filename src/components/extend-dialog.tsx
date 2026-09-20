@@ -137,7 +137,18 @@ export function ExtendDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md">
+      {/*
+        ★ ӨНДӨР ХЯЗГААРЛАХ — ЦОНХ ДЭЛГЭЦЭЭС ХЭТЭРЧ БАЙВ
+
+        Заал 14 багцтай болсноор агуулга ~950px болж, зөөврийн
+        компьютерын дэлгэцэнд «Сунгах» товч ҮЛ ҮЗЭГДЭХ болсон. Цонх
+        төвдөө байрладаг тул дээд ба доод тал нь хоёулаа тасарч,
+        гүйлгэх ч боломжгүй байв.
+
+        `grid-rows-[auto_1fr_auto]` нь толгой ба хөлийг ТОГТМОЛ үлдээж,
+        зөвхөн дунд хэсгийг гүйлгэнэ — товч үргэлж харагдана.
+      */}
+      <DialogContent className="grid max-h-[85svh] grid-rows-[auto_1fr_auto] sm:max-w-lg">
         <DialogHeader>
           <DialogTitle>
             {cancelled ? "Сэргээж сунгах" : "Эрх сунгах"}
@@ -147,157 +158,173 @@ export function ExtendDialog({
           </DialogDescription>
         </DialogHeader>
 
-        {cancelled && (
-          <div className="flex items-start gap-3 rounded-lg border border-amber-500/30 bg-amber-500/[0.06] px-3 py-2.5">
-            <ScanFace className="mt-0.5 size-4 shrink-0 text-amber-600 dark:text-amber-400" />
-            <p className="text-muted-foreground text-xs">
-              Энэ гишүүний эрх цуцлагдсан. Сунгалт хийвэл{" "}
-              <span className="text-foreground font-medium">
-                хуучин бүртгэл дээрээ сэргэнэ
-              </span>{" "}
-              — түүх, ирц хэвээр үлдэнэ. Цуцлах үед терминалаас устсан тул{" "}
-              <span className="text-foreground font-medium">
-                царайгаа дахин уншуулах
-              </span>{" "}
-              шаардлагатай.
-            </p>
-          </div>
-        )}
+        {/* ⚠ `min-h-0` — grid-ийн `1fr` мөр дотор гүйлгэх бол заавал.
+            Эс бөгөөс агуулга мөрийг сунгаж, overflow ажиллахгүй. */}
+        <div className="grid min-h-0 gap-4 overflow-y-auto pr-1">
+          {cancelled && (
+            <div className="flex items-start gap-3 rounded-lg border border-amber-500/30 bg-amber-500/[0.06] px-3 py-2.5">
+              <ScanFace className="mt-0.5 size-4 shrink-0 text-amber-600 dark:text-amber-400" />
+              <p className="text-muted-foreground text-xs">
+                Энэ гишүүний эрх цуцлагдсан. Сунгалт хийвэл{" "}
+                <span className="text-foreground font-medium">
+                  хуучин бүртгэл дээрээ сэргэнэ
+                </span>{" "}
+                — түүх, ирц хэвээр үлдэнэ. Цуцлах үед терминалаас устсан тул{" "}
+                <span className="text-foreground font-medium">
+                  царайгаа дахин уншуулах
+                </span>{" "}
+                шаардлагатай.
+              </p>
+            </div>
+          )}
 
-        <div className="space-y-4">
-          <div className="space-y-2">
-            <Label>Багц</Label>
-            <div className="grid gap-2">
-              {packages?.items.map((p) => (
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label>Багц</Label>
+              {/* Өргөн цонхонд хоёр багана — landing-ийн pay хуудастай
+                ижил. 14 багцын жагсаалт хоёр дахин богиносно. */}
+              <div className="grid gap-2 sm:grid-cols-2">
+                {packages?.items.map((p) => (
+                  <button
+                    key={p.id}
+                    type="button"
+                    onClick={() => pick(p)}
+                    className={cn(
+                      // ⚠ Нэр, үнэ хоёрыг БОСООГООР. Хоёр баганад хуваахад
+                      // нэг багана ~240px болох тул «Хотхоны оршин суугч
+                      // 1 сар» + үнэ зэрэгцэж багтахгүй, муухай тасарна.
+                      "rounded-lg border px-3 py-2.5 text-left leading-tight transition-colors",
+                      pkgId === p.id
+                        ? "border-primary bg-primary/5"
+                        : "hover:bg-accent/50",
+                    )}
+                  >
+                    <span className="block text-sm font-medium">{p.name}</span>
+                    <span className="text-muted-foreground block text-xs tabular-nums">
+                      {p.days} хоног · {money(p.price)}
+                    </span>
+                  </button>
+                ))}
                 <button
-                  key={p.id}
                   type="button"
-                  onClick={() => pick(p)}
+                  onClick={() => {
+                    setMode("custom");
+                    setPkgId(null);
+                    setAmount("");
+                  }}
                   className={cn(
-                    "flex items-center justify-between rounded-lg border px-3 py-2.5 text-left transition-colors",
-                    pkgId === p.id
+                    "rounded-lg border px-3 py-2.5 text-left text-sm transition-colors",
+                    // Хоёр баганатай үед бүтэн мөрийг эзэлнэ — багц БИШ
+                    // гэдгийг байрлал нь өөрөө хэлнэ.
+                    "sm:col-span-2",
+                    custom
                       ? "border-primary bg-primary/5"
                       : "hover:bg-accent/50",
                   )}
                 >
-                  <span className="text-sm font-medium">{p.name}</span>
-                  <span className="text-muted-foreground text-sm">
-                    {p.days} хоног · {money(p.price)}
-                  </span>
+                  Хоногоор (багцгүй)
                 </button>
-              ))}
-              <button
-                type="button"
-                onClick={() => {
-                  setMode("custom");
-                  setPkgId(null);
-                  setAmount("");
-                }}
-                className={cn(
-                  "rounded-lg border px-3 py-2.5 text-left text-sm transition-colors",
-                  custom ? "border-primary bg-primary/5" : "hover:bg-accent/50",
-                )}
-              >
-                Хоногоор (багцгүй)
-              </button>
-            </div>
-          </div>
-
-          {custom && (
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-2">
-                <Label htmlFor="days">Хоног *</Label>
-                <Input
-                  id="days"
-                  inputMode="numeric"
-                  value={customDays}
-                  onChange={(e) =>
-                    setCustomDays(e.target.value.replace(/\D/g, ""))
-                  }
-                  placeholder="30"
-                />
               </div>
+            </div>
+
+            {custom && (
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-2">
+                  <Label htmlFor="days">Хоног *</Label>
+                  <Input
+                    id="days"
+                    inputMode="numeric"
+                    value={customDays}
+                    onChange={(e) =>
+                      setCustomDays(e.target.value.replace(/\D/g, ""))
+                    }
+                    placeholder="30"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="amount">Дүн (₮)</Label>
+                  <Input
+                    id="amount"
+                    inputMode="numeric"
+                    value={amount}
+                    onChange={(e) =>
+                      setAmount(e.target.value.replace(/\D/g, ""))
+                    }
+                    placeholder="0"
+                  />
+                </div>
+              </div>
+            )}
+
+            {!custom && selected && (
               <div className="space-y-2">
-                <Label htmlFor="amount">Дүн (₮)</Label>
+                <Label htmlFor="amount2">Хүлээн авсан дүн (₮)</Label>
                 <Input
-                  id="amount"
+                  id="amount2"
                   inputMode="numeric"
                   value={amount}
                   onChange={(e) => setAmount(e.target.value.replace(/\D/g, ""))}
-                  placeholder="0"
                 />
               </div>
-            </div>
-          )}
+            )}
 
-          {!custom && selected && (
+            {/* ── Хосын багц: хамтрагч ЗААВАЛ ── */}
+            {(selected?.seats ?? 1) > 1 && (
+              <div className="space-y-2 rounded-lg border border-amber-500/40 bg-amber-500/5 p-3">
+                <Label htmlFor="partner">
+                  Хамтрагч
+                  <span className="text-destructive"> *</span>
+                </Label>
+                <Input
+                  id="partner"
+                  value={partnerQuery}
+                  onChange={(e) => {
+                    setPartnerQuery(e.target.value);
+                    setPartnerId(null);
+                  }}
+                  placeholder="Нэр эсвэл утсаар хайх"
+                />
+                {partnerQuery.trim().length >= 2 && !partnerId && (
+                  <PartnerResults
+                    query={partnerQuery}
+                    excludeId={memberId}
+                    onPick={(m) => {
+                      setPartnerId(m.id);
+                      setPartnerQuery(`${m.name} · №${m.memberNo}`);
+                    }}
+                  />
+                )}
+                <p className="text-muted-foreground text-xs">
+                  Дүн хоёулангад ТЭНЦҮҮ хуваарилагдана (
+                  {Math.floor(Number(amount || 0) / 2).toLocaleString()}₮ тус
+                  бүр). Хоёулаа бүртгэлтэй байх ёстой.
+                </p>
+              </div>
+            )}
+
             <div className="space-y-2">
-              <Label htmlFor="amount2">Хүлээн авсан дүн (₮)</Label>
-              <Input
-                id="amount2"
-                inputMode="numeric"
-                value={amount}
-                onChange={(e) => setAmount(e.target.value.replace(/\D/g, ""))}
-              />
-            </div>
-          )}
-
-          {/* ── Хосын багц: хамтрагч ЗААВАЛ ── */}
-          {(selected?.seats ?? 1) > 1 && (
-            <div className="space-y-2 rounded-lg border border-amber-500/40 bg-amber-500/5 p-3">
-              <Label htmlFor="partner">
-                Хамтрагч
-                <span className="text-destructive"> *</span>
+              <Label htmlFor="reason">
+                Тайлбар {custom && <span className="text-destructive">*</span>}
               </Label>
               <Input
-                id="partner"
-                value={partnerQuery}
-                onChange={(e) => {
-                  setPartnerQuery(e.target.value);
-                  setPartnerId(null);
-                }}
-                placeholder="Нэр эсвэл утсаар хайх"
+                id="reason"
+                value={reason}
+                onChange={(e) => setReason(e.target.value)}
+                placeholder={custom ? "Урамшуулал, засвар…" : "Заавал биш"}
               />
-              {partnerQuery.trim().length >= 2 && !partnerId && (
-                <PartnerResults
-                  query={partnerQuery}
-                  excludeId={memberId}
-                  onPick={(m) => {
-                    setPartnerId(m.id);
-                    setPartnerQuery(`${m.name} · №${m.memberNo}`);
-                  }}
-                />
+              {custom && (
+                <p className="text-muted-foreground text-xs">
+                  Багцгүй сунгалт аудитад бичигдэнэ — тайлбар шаардлагатай.
+                </p>
               )}
-              <p className="text-muted-foreground text-xs">
-                Дүн хоёулангад ТЭНЦҮҮ хуваарилагдана (
-                {Math.floor(Number(amount || 0) / 2).toLocaleString()}₮ тус
-                бүр). Хоёулаа бүртгэлтэй байх ёстой.
-              </p>
             </div>
-          )}
 
-          <div className="space-y-2">
-            <Label htmlFor="reason">
-              Тайлбар {custom && <span className="text-destructive">*</span>}
-            </Label>
-            <Input
-              id="reason"
-              value={reason}
-              onChange={(e) => setReason(e.target.value)}
-              placeholder={custom ? "Урамшуулал, засвар…" : "Заавал биш"}
-            />
-            {custom && (
-              <p className="text-muted-foreground text-xs">
-                Багцгүй сунгалт аудитад бичигдэнэ — тайлбар шаардлагатай.
+            {error && (
+              <p className="text-destructive bg-destructive/8 rounded-md px-3 py-2 text-sm">
+                {error}
               </p>
             )}
           </div>
-
-          {error && (
-            <p className="text-destructive bg-destructive/8 rounded-md px-3 py-2 text-sm">
-              {error}
-            </p>
-          )}
         </div>
 
         <DialogFooter>

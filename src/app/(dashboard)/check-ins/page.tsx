@@ -34,6 +34,13 @@ interface EventRow {
   id: string;
   memberId: string | null;
   memberName: string | null;
+  /**
+   * Терминал дээр бичигдсэн нэр.
+   *
+   * WinFit-д гишүүн олдоогүй үед хэн болохыг хэлэх цорын ганц эх
+   * сурвалж — терминалаас импортолсон ирцийн ихэнх нь тийм.
+   */
+  terminalName: string | null;
   memberNo: number | null;
   eventAt: string;
   granted: boolean;
@@ -259,11 +266,20 @@ export default function CheckInsPage() {
             </div>
           </div>
         ) : (
-          // Бүртгэлгүй уншуулалт — ЯЛГАРЧ харагдах ёстой. Мөрийг дарвал
-          // дэлгэрэнгүй нээгдэж, дугаараар нь гишүүн олдох эсэхийг харна.
-          <span className="text-muted-foreground text-sm italic">
-            Бүртгэлгүй{e.memberNo ? ` (№${e.memberNo})` : ''}
-          </span>
+          /*
+            WinFit-д гишүүн алга. Гэхдээ терминал нэрийг нь илгээсэн
+            байвал ТҮҮНИЙГ харуулна — «Бүртгэлгүй (№246)» гэхээс хэн
+            болох нь ойлгомжтой. Налуу үсэг нь WinFit-ийн бүртгэл биш
+            гэдгийг ялгаж байна.
+          */
+          <div className="leading-tight">
+            <div className="text-muted-foreground text-sm italic">
+              {e.terminalName || 'Бүртгэлгүй'}
+            </div>
+            <div className="text-muted-foreground/70 font-mono text-xs tabular-nums">
+              №{e.memberNo ?? '—'} · терминал
+            </div>
+          </div>
         ),
     },
     {
