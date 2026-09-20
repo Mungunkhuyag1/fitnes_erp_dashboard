@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
+import { CheckInDetail } from '@/components/check-in-detail';
 import { DataTable, type Column } from '@/components/data-table';
 import { EmptyState } from '@/components/empty-state';
 import { FilterSelect, type FilterOption } from '@/components/filter-select';
@@ -104,9 +105,20 @@ export default function CheckInsPage() {
   const [result, setResult] = useState('');
   const [reason, setReason] = useState('');
   const [search, setSearch] = useState('');
+  /**
+   * Терминал дээрх дугаараар шүүх.
+   *
+   * ⚠ Нэрээр хайх талбараас ТУСДАА: нэрийн хайлт нь `members` хүснэгтээр
+   * дамждаг тул WinFit-д бүртгэлгүй уншуулалтыг ОГТ олохгүй. Терминалаас
+   * импортолсон түүхийн ихэнх нь яг тийм байдаг.
+   */
+  const [memberNo, setMemberNo] = useState('');
   const [page, setPage] = useState(1);
+  /** Дэлгэрэнгүй цонх нээх ирцийн ID. */
+  const [detailId, setDetailId] = useState<string | null>(null);
 
   const q = useDebounce(search);
+  const no = useDebounce(memberNo);
   const days = RANGES.find((x) => x.key === range)!.days;
   const live = range === 'today';
 
@@ -122,6 +134,7 @@ export default function CheckInsPage() {
       granted: result || undefined,
       reason: reason || undefined,
       q: q || undefined,
+      memberNo: no.trim() || undefined,
       page,
       limit: 25,
     })}`,
@@ -152,12 +165,17 @@ export default function CheckInsPage() {
       label: `Хайлт: ${q}`,
       clear: () => setFilter(() => setSearch('')),
     },
+    no.trim() && {
+      label: `№${no.trim()}`,
+      clear: () => setFilter(() => setMemberNo('')),
+    },
   ].filter(Boolean) as { label: string; clear: () => void }[];
 
   const clearAll = () =>
     setFilter(() => {
       setResult('');
       setReason('');
+      setMemberNo('');
       setSearch('');
     });
 
@@ -221,14 +239,28 @@ export default function CheckInsPage() {
       cell: (e) =>
         e.memberName ? (
           <div className="leading-tight">
-            <div className="font-medium">{e.memberName}</div>
+            {/*
+              Нэр дээр дарвал ШУУД гишүүн рүү. Мөрийг дарвал дэлгэрэнгүй
+              нээгддэг тул `stopPropagation` — эс бөгөөс хоёулаа зэрэг
+              ажиллаж, цонх нээгдээд дараа нь хуудас солигдоно.
+            */}
+            <button
+              type="button"
+              onClick={(ev) => {
+                ev.stopPropagation();
+                router.push(`/members/${e.memberId}`);
+              }}
+              className="font-medium hover:underline"
+            >
+              {e.memberName}
+            </button>
             <div className="text-muted-foreground font-mono text-xs tabular-nums">
               №{e.memberNo}
             </div>
           </div>
         ) : (
-          // Бүртгэлгүй уншуулалт — дарахад очих газар байхгүй тул
-          // ЯЛГАРЧ харагдах ёстой.
+          // Бүртгэлгүй уншуулалт — ЯЛГАРЧ харагдах ёстой. Мөрийг дарвал
+          // дэлгэрэнгүй нээгдэж, дугаараар нь гишүүн олдох эсэхийг харна.
           <span className="text-muted-foreground text-sm italic">
             Бүртгэлгүй{e.memberNo ? ` (№${e.memberNo})` : ''}
           </span>
@@ -339,6 +371,20 @@ export default function CheckInsPage() {
             className="pl-9"
           />
         </div>
+        {/*
+          Дугаараар шүүх — нэрийн хайлтаас тусдаа. Терминалаас импортолсон
+          ирцийн ихэнх нь WinFit-д гишүүнгүй тул нэрээр олдохгүй.
+        */}
+        <Input
+          value={memberNo}
+          onChange={(e) =>
+            // Зөвхөн цифр — «№1001» гэж бичихэд ч ажиллана.
+            setFilter(() => setMemberNo(e.target.value.replace(/\D/g, '')))
+          }
+          placeholder="№ дугаар"
+          inputMode="numeric"
+          className="w-28"
+        />
         <FilterSelect
           value={range}
           onChange={(v) => setFilter(() => setRange(v as RangeKey))}
@@ -400,9 +446,15 @@ export default function CheckInsPage() {
         loading={loading}
         error={error}
         rowKey={(e) => e.id}
-        // Бүртгэлгүй уншуулалтад очих гишүүн байхгүй тул мөрийг дарж
-        // болохгүй — `onRowClick` дотор шалгана.
-        onRowClick={(e) => e.memberId && router.push(`/members/${e.memberId}`)}
+        /*
+         * Мөр дарахад ДЭЛГЭРЭНГҮЙ нээгдэнэ — гишүүн рүү шууд үсрэхгүй.
+         *
+         * Урьд нь гишүүнтэй мөр л дарагддаг байсан бөгөөд бүртгэлгүй
+         * уншуулалт дээр юу ч болдоггүй байв. Гэтэл яг тэдгээр нь
+         * «энэ хэн бэ» гэж шалгах шаардлагатай мөрүүд. Одоо бүх мөр
+         * нээгдэж, гишүүн рүү очих товч цонхон дотор байна.
+         */
+        onRowClick={(e) => setDetailId(e.id)}
         onPageChange={setPage}
         empty={
           filtered ? (
@@ -437,6 +489,8 @@ export default function CheckInsPage() {
           )
         }
       />
+
+      <CheckInDetail id={detailId} onClose={() => setDetailId(null)} />
     </div>
   );
 }
