@@ -71,7 +71,7 @@ const DOT: Record<string, string> = {
 
 const TONE: Record<Status, string> = {
   issued: "bg-amber-500/12 text-amber-700 dark:text-amber-400",
-  enrolled: "bg-primary/10 text-primary",
+  enrolled: "bg-primary/10 text-primary-ink",
   used: "bg-muted text-muted-foreground",
   cancelled: "bg-destructive/10 text-destructive",
 };

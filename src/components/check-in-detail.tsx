@@ -12,6 +12,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import { Skeleton } from '@/components/ui/skeleton';
 import { useApi } from '@/hooks/use-api';
 import { dateTime } from '@/lib/format';
 import { cn } from '@/lib/utils';
@@ -101,10 +102,25 @@ export function CheckInDetail({
           <p className="text-destructive bg-destructive/8 rounded-lg px-3 py-2.5 text-sm">
             {error}
           </p>
-        ) : !data ? (
-          <p className="text-muted-foreground py-6 text-center text-sm">
-            {loading ? 'Уншиж байна…' : '—'}
-          </p>
+        ) : loading || !data ? (
+          /*
+            ⚠ `loading`-ийг `data`-аас ӨМНӨ шалгана.
+
+            `useApi` нь шинэчлэх үед дэлгэц анивчихгүйн тулд хуучин
+            өгөгдлийг зориудаар үлдээдэг. Энэ нь нэг хуудсыг давтан
+            татахад зөв — гэвч цонх ӨӨР бичлэг рүү шилжихэд өмнөх
+            хүний зураг, нэр хэсэг зуур харагдаад дараа нь солигдоно.
+            Буруу хүнийг харж байгаад андуурах эрсдэлтэй.
+          */
+          <div className="space-y-4">
+            <Skeleton className="h-44 w-full" />
+            <div className="space-y-2">
+              {[0, 1, 2, 3].map((i) => (
+                <Skeleton key={i} className="h-5 w-full" />
+              ))}
+            </div>
+            <Skeleton className="h-20 w-full" />
+          </div>
         ) : (
           <div className="space-y-4">
             {/*

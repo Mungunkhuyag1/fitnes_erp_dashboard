@@ -503,7 +503,7 @@ function Flag({
     <span
       className={cn(
         "rounded px-1.5 py-0.5 text-[10px] font-medium",
-        tone === "accent" && "bg-primary/10 text-primary",
+        tone === "accent" && "bg-primary/10 text-primary-ink",
         tone === "warn" && "bg-amber-500/12 text-amber-700 dark:text-amber-400",
         !tone && "bg-muted text-muted-foreground",
       )}
