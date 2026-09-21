@@ -15,9 +15,8 @@ import { useMemo, useState } from "react";
 import { DonutChart, TrendChart } from "@/components/charts";
 import { LinkButton } from "@/components/link-button";
 import { AwaitingApprovalCard } from "@/components/awaiting-approval-card";
-import { PageHeader } from "@/components/page-header";
 import { StatCard } from "@/components/stat-card";
-import { TaskTodoCard } from "@/components/task-todo-card";
+import { TaskTodoCard, useTodo } from "@/components/task-todo-card";
 import { TerminalQuickActions } from "@/components/terminal-quick-actions";
 import { Button } from "@/components/ui/button";
 import {
@@ -29,7 +28,6 @@ import {
 } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useApi } from "@/hooks/use-api";
-import { useAuth } from "@/lib/auth";
 import { date, money, relative } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
@@ -134,7 +132,6 @@ const axisLabel = (iso: string, range: DashRange) =>
 export default function HomePage() {
   const [range, setRange] = useState<DashRange>("30d");
   const { data: d, loading } = useApi<Dash>(`/dashboard?range=${range}`);
-  const { user } = useAuth();
   const router = useRouter();
   const [metric, setMetric] = useState<"revenue" | "visits">("revenue");
 
@@ -173,6 +170,17 @@ export default function HomePage() {
     );
   }
   if (!d) return null;
+
+  /*
+    Ажлын жагсаалтыг ХУУДАС дээр татна — карт дотороо биш.
+
+    Дээд мөрийг бүхэлд нь нуух эсэхийг шийдэхийн тулд хуудас нь АЖЛЫН
+    ТООГ мэдэх шаардлагатай. Карт өөрөө татах бол энэ мэдээлэл
+    гадагшаа гарах аргагүй.
+  */
+  const todo = useTodo();
+  const todoCount =
+    (todo.data?.items.length ?? 0) + (todo.data?.overdue.length ?? 0);
 
   const totalMembers = d.members.active + d.members.expired + d.members.lead;
   const attention = [
@@ -279,29 +287,6 @@ export default function HomePage() {
   return (
     // `order-*` ажиллахын тулд эцэг нь flex байх шаардлагатай.
     <div className="flex flex-col gap-5">
-      <PageHeader
-        title={`Сайн байна уу, ${user?.name?.split(" ")[0] ?? ""} 👋`}
-        description="Өнөөдрийн ирц, орлого, анхаарах зүйлс"
-      >
-        <div className="flex flex-wrap items-center gap-2">
-          {/* Хугацааны хүрээ — үзүүлэлт, график ХОЁУЛАНД нөлөөлнө. */}
-          <div className="bg-muted flex rounded-lg p-0.5">
-            {RANGES.map((r) => (
-              <Button
-                key={r.key}
-                size="sm"
-                variant={range === r.key ? "default" : "ghost"}
-                className={range === r.key ? "" : "text-muted-foreground"}
-                onClick={() => setRange(r.key)}
-              >
-                {r.label}
-              </Button>
-            ))}
-          </div>
-          <LinkButton href="/members/new">Гишүүн нэмэх</LinkButton>
-        </div>
-      </PageHeader>
-
       {/*
         ★ ДЭЭД МӨР — «ЮУ ХИЙХ ЁСТОЙ ВЭ».
 
@@ -312,9 +297,30 @@ export default function HomePage() {
         Урьд нь ажлын жагсаалт БҮТЭН ӨРГӨНӨӨР гагцаараа зогсож, 2-3
         мөр ажилд хэт том хоосон карт болдог байв.
       */}
+      {/*
+        ⚠ ХОЁУЛАНГ НЬ ХООСОН БОЛ МӨРИЙГ ОГТ ХАРУУЛАХГҮЙ.
+
+        Хоёр хоосон карт дэлгэцийн гуравны нэгийг эзэлээд «бүгд сайн
+        байна» гэж хоёр удаа хэлэх нь зайн гамтай. Тэр үед дэлгэц
+        ШУУД үзүүлэлтээр эхлэнэ.
+      */}
+      {/*
+        ⚠ `todo` АЧААЛЖ БАЙХДА Ч МӨРИЙГ ҮЛДЭЭНЭ.
+
+        Эс бөгөөс эхний зурагт `todoCount = 0` байж мөр нуугдаад,
+        200 мс-ын дараа өгөгдөл ирэхэд гэнэт гарч ирэх ба үзүүлэлтүүд
+        доошоо үсрэнэ.
+      */}
+      {((todo.loading && !todo.data) ||
+        todoCount > 0 ||
+        attention.length > 0) && (
       <div className="grid gap-4 lg:grid-cols-3">
         <div className="lg:col-span-2">
-          <TaskTodoCard />
+          <TaskTodoCard
+            data={todo.data}
+            loading={todo.loading}
+            reload={todo.reload}
+          />
         </div>
 
           {/* ── Анхаарах зүйлс ── */}
@@ -387,59 +393,88 @@ export default function HomePage() {
               )}
             </CardContent>
           </Card>
-      </div>
+        </div>
+      )}
 
       <AwaitingApprovalCard />
 
       {/*
-        ── Үзүүлэлтүүд ──
+        ── ҮЗҮҮЛЭЛТҮҮД ──
 
         ⚠ Утасан дээр ЭХЭНД (`order-first`). Багана нурахад дээд мөрийн
         хоёр карт дээсээ зогсож, тоо нь мянган пиксел доошоо ордог.
         Утсаар нээхэд хамгийн түрүүнд харах зүйл бол өнөөдрийн ирц,
         орлого. Ширээнд харин дараалал хэвээр — тэнд бүгд зэрэг харагдана.
       */}
-      <div className="order-first grid gap-4 sm:grid-cols-2 lg:order-none xl:grid-cols-4">
-        <StatCard
-          label="Өнөөдрийн ирц"
-          value={d.today.visits}
-          suffix="хүн"
-          sub={`${d.today.scans} уншуулалт${d.today.denied ? ` · ${d.today.denied} татгалзсан` : ""}`}
-          delta={d.period.visitsDelta}
-          footL={shortLabel}
-          footR={`${d.period.visits} хүн`}
-          onClick={() => router.push("/check-ins")}
-        />
-        <StatCard
-          label="Өнөөдрийн орлого"
-          value={money(d.revenueToday.total)}
-          sub={`Бэлэн ${money(d.revenueToday.cash)} · Онлайн ${money(d.revenueToday.bonum)}`}
-          delta={d.period.revenueDelta}
-          footL={shortLabel}
-          footR={money(d.period.revenue)}
-          onClick={() => router.push("/reports")}
-        />
-        <StatCard
-          label="Идэвхтэй гишүүн"
-          value={d.members.active}
-          suffix={`/ ${totalMembers}`}
-          ratio={totalMembers ? d.members.active / totalMembers : 0}
-          footL={`${d.members.expired} дууссан`}
-          footR={`${d.members.lead} шинэ`}
-          onClick={() => router.push("/members?status=active")}
-        />
-        <StatCard
-          label="Гарсан түлхүүр"
-          value={d.lockers.keysOut}
-          suffix="ширхэг"
-          sub={
-            d.lockers.overdueRentals
-              ? `${d.lockers.overdueRentals} хугацаа хэтэрсэн`
-              : "Хугацаа хэтэрсэн байхгүй"
-          }
-          tone={d.lockers.overdueRentals ? "danger" : "default"}
-          onClick={() => router.push("/lockers")}
-        />
+      <div className="order-first flex flex-col gap-3 lg:order-none">
+        {/*
+          Хугацааны хүрээ — НӨЛӨӨЛДӨГ ХЭСГИЙН ДЭЭР.
+
+          Хуудсны толгойд байхад «юунд нөлөөлдөг вэ» гэдэг нь тодорхойгүй
+          байв — ажлын жагсаалт, анхаарах зүйлс хоёрт нөлөөлдөггүй. Үзүүлэлт
+          ба графикийн дээр тавьснаар хамаарал нь өөрөө харагдана.
+        */}
+        <div className="flex items-center justify-between gap-2">
+          <h2 className="text-muted-foreground text-sm font-medium">
+            Үзүүлэлт
+          </h2>
+          <div className="bg-muted flex rounded-lg p-0.5">
+            {RANGES.map((r) => (
+              <Button
+                key={r.key}
+                size="sm"
+                variant={range === r.key ? "default" : "ghost"}
+                className={range === r.key ? "" : "text-muted-foreground"}
+                onClick={() => setRange(r.key)}
+              >
+                {r.label}
+              </Button>
+            ))}
+          </div>
+        </div>
+
+        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          <StatCard
+            label="Өнөөдрийн ирц"
+            value={d.today.visits}
+            suffix="хүн"
+            sub={`${d.today.scans} уншуулалт${d.today.denied ? ` · ${d.today.denied} татгалзсан` : ""}`}
+            delta={d.period.visitsDelta}
+            footL={shortLabel}
+            footR={`${d.period.visits} хүн`}
+            onClick={() => router.push("/check-ins")}
+          />
+          <StatCard
+            label="Өнөөдрийн орлого"
+            value={money(d.revenueToday.total)}
+            sub={`Бэлэн ${money(d.revenueToday.cash)} · Онлайн ${money(d.revenueToday.bonum)}`}
+            delta={d.period.revenueDelta}
+            footL={shortLabel}
+            footR={money(d.period.revenue)}
+            onClick={() => router.push("/reports")}
+          />
+          <StatCard
+            label="Идэвхтэй гишүүн"
+            value={d.members.active}
+            suffix={`/ ${totalMembers}`}
+            ratio={totalMembers ? d.members.active / totalMembers : 0}
+            footL={`${d.members.expired} дууссан`}
+            footR={`${d.members.lead} шинэ`}
+            onClick={() => router.push("/members?status=active")}
+          />
+          <StatCard
+            label="Гарсан түлхүүр"
+            value={d.lockers.keysOut}
+            suffix="ширхэг"
+            sub={
+              d.lockers.overdueRentals
+                ? `${d.lockers.overdueRentals} хугацаа хэтэрсэн`
+                : "Хугацаа хэтэрсэн байхгүй"
+            }
+            tone={d.lockers.overdueRentals ? "danger" : "default"}
+            onClick={() => router.push("/lockers")}
+          />
+        </div>
       </div>
 
       {/* ── График ── «Анхаарах зүйлс» дээшээ гарсан тул бүтэн өргөн. */}

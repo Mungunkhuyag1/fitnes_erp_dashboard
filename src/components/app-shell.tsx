@@ -7,6 +7,7 @@ import {
   LogOut,
   Moon,
   MoreVertical,
+  Plus,
   Settings,
   Sun,
   User,
@@ -295,6 +296,15 @@ function EdgeToggle() {
 
 /** Толгой — блокийн `SiteHeader`: зам заагч + загвар солих. */
 function SiteHeader() {
+  const pathname = usePathname();
+  const { user } = useAuth();
+  /*
+    НҮҮР хуудаст зам заагч УТГАГҮЙ — «Нүүр» гэсэн ганц үг нь хаана
+    байгааг аль хэдийн мэдэж байгаа хүнд дахин хэлдэг. Оронд нь
+    мэндчилгээ — хуудасны толгой ч цэвэрдэнэ.
+  */
+  const home = pathname === '/';
+
   return (
     <header className="flex h-(--header-height) shrink-0 items-center gap-2 border-b transition-[width,height] ease-linear">
       <div className="flex w-full items-center gap-1 px-4 lg:gap-2 lg:px-6">
@@ -306,9 +316,31 @@ function SiteHeader() {
           className="mx-2 data-[orientation=vertical]:h-4 lg:hidden"
         />
         <div className="min-w-0 flex-1">
-          <Breadcrumb />
+          {home ? (
+            <p className="truncate text-sm font-medium">
+              Сайн байна уу, {user?.name?.split(' ')[0] ?? ''} 👋
+            </p>
+          ) : (
+            <Breadcrumb />
+          )}
         </div>
         <div className="ml-auto flex items-center gap-2">
+          {/*
+            Гишүүн нэмэх — РЕСЕПШНИЙ ХАМГИЙН ТҮГЭЭМЭЛ ҮЙЛДЭЛ.
+
+            Урьд нь зөвхөн нүүр хуудсан дээр байсан тул ажилтан өөр дэлгэцээс
+            эхлээд буцах шаардлагатай болдог байв. Утасан дээр зөвхөн `+`:
+            толгойн мөрөнд бичвэртэй товч багтахгүй.
+          */}
+          <Button
+            size="sm"
+            nativeButton={false}
+            render={<Link href="/members/new" />}
+            aria-label="Гишүүн нэмэх"
+          >
+            <Plus className="size-4" />
+            <span className="hidden sm:inline">Гишүүн нэмэх</span>
+          </Button>
           <ThemeToggle />
         </div>
       </div>

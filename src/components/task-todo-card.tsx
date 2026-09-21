@@ -19,10 +19,24 @@ import { useApi } from '@/hooks/use-api';
 import { api } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
 
-interface Todo {
+export interface Todo {
   today: string;
   items: TaskOccurrence[];
   overdue: TaskOccurrence[];
+}
+
+/**
+ * Өнөөдрийн ажил.
+ *
+ * ★ КАРТААС ТУСДАА ГАРГАСАН ШАЛТГААН
+ *
+ * Нүүр хуудас нь ажил БА анхаарах зүйлс ХОЁУЛАНГ нь хоосон
+ * үед дээд мөрийг БүХэлд нь нуух шаардлагатай. Үүнийг мэдэхийн
+ * тулд өгөгдлийг ХУУДАС өөрөө эзэмших ёстой — карт дотороо
+ * татвал хуудас түүнийг асуух аргагүй.
+ */
+export function useTodo() {
+  return useApi<Todo>('/tasks/todo', { refreshMs: 120_000 });
 }
 
 /**
@@ -39,11 +53,16 @@ interface Todo {
  * Өчигдрийн хийгдээгүй ажлыг өнөөдрийнхтэй хольвол аль нь яаралтайг
  * ялгахгүй. Backend 7 хоногоор хязгаарладаг.
  */
-export function TaskTodoCard() {
+export function TaskTodoCard({
+  data,
+  loading,
+  reload,
+}: {
+  data: Todo | null;
+  loading: boolean;
+  reload: () => void;
+}) {
   const { can } = useAuth();
-  const { data, loading, reload } = useApi<Todo>('/tasks/todo', {
-    refreshMs: 120_000,
-  });
   const [task, setTask] = useState<TaskRule | null>(null);
 
   /*
@@ -105,10 +124,25 @@ export function TaskTodoCard() {
             ))}
           </div>
         ) : total === 0 ? (
-          /* Хоосон нь САЙН мэдээ — үүнийг ойлгомжтой хэлнэ. */
-          <div className="text-muted-foreground flex items-center gap-2 py-4 text-sm">
-            <CheckCircle2 className="size-4 text-emerald-500" />
-            Өнөөдөр төлөвлөгдсөн ажил алга
+          /*
+            Хоосон төлөв — «Анхаарах зүйлс»-тэй ИЖИЛ байрлал.
+
+            Хоёр карт зэрэгцээ байгаа тул хоосон төлөв нь өөр хэлбэртэй
+            байвал аль нь алиных болох нь төөрөгдүүлнэ.
+          */
+          <div className="flex flex-col items-center justify-center py-10 text-center">
+            <span className="bg-emerald-500/10 mb-3 flex size-11 items-center justify-center rounded-full">
+              <CheckCircle2 className="size-5 text-emerald-600 dark:text-emerald-400" />
+            </span>
+            <p className="text-sm font-medium">Төлөвлөгдсөн ажил алга</p>
+            <p className="text-muted-foreground mt-1 text-xs">
+              Өнөөдөр хийх зүйл товлогдоогүй байна
+            </p>
+            {can('manager') && (
+              <LinkButton size="sm" variant="outline" href="/tasks" className="mt-3">
+                Ажил төлөвлөх
+              </LinkButton>
+            )}
           </div>
         ) : (
           <div className="space-y-3">
