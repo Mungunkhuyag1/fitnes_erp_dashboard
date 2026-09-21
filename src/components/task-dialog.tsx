@@ -1,7 +1,7 @@
 'use client';
 
 import { Loader2, Trash2 } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { toast } from 'sonner';
 import { FilterSelect, type FilterOption } from '@/components/filter-select';
 import { Button } from '@/components/ui/button';
@@ -97,14 +97,20 @@ export function TaskDialog({
 }) {
   const { can } = useAuth();
   const manager = can('manager');
-  const [form, setForm] = useState<TaskRule>(blank(defaultDay));
-  const [saving, setSaving] = useState(false);
+  /*
+    ★ ТӨЛӨВИЙГ `key`-ЭЭР ШИНЭЧЛЭНЭ, ЭФФЕКТЭЭР БИШ.
 
-  // Цонх нээгдэх бүрд утгыг ШИНЭЭР тавина: өмнөх ажлын утга үлдвэл
-  // ажилтан буруу мөрийг засаж байна гэж бодохгүй.
-  useEffect(() => {
-    if (open) setForm(task ?? blank(defaultDay));
-  }, [open, task, defaultDay]);
+    Урьд нь `useEffect` дотроо `setForm` дууддаг байв — төслийн
+    `react-hooks/set-state-in-effect` дүрэм түүнийг хориглодог: эффектээс
+    setState дуудвал нэмэлт дүрслэл үүсэж, цонх нээхэд хуучин утга
+    агшаар анивчдаг.
+
+    Эцэг нь `key`-г солиход компонент бүхэлдээ дахин үүсэх тул
+    анхны утга ҮРГЭЛЖ зөв байна (React-ын зөвлөдөг арга:
+    «төлөвийг key-гээр шинэчлэх»).
+  */
+  const [form, setForm] = useState<TaskRule>(task ?? blank(defaultDay));
+  const [saving, setSaving] = useState(false);
 
   // Хариуцагчийн жагсаалт — MANAGER-ээс дээш эрхтэйд л нээлттэй.
   const { data: staff } = useApi<StaffBrief[]>(manager ? '/staff/brief' : null);

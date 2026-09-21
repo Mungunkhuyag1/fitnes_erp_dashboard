@@ -4,7 +4,6 @@ import { Loader2, UserCog } from 'lucide-react';
 import { useState } from 'react';
 import { toast } from 'sonner';
 import { FilterSelect, type FilterOption } from '@/components/filter-select';
-import { Button } from '@/components/ui/button';
 import { useApi } from '@/hooks/use-api';
 import { api, type Page } from '@/lib/api';
 import { useAuth } from '@/lib/auth';

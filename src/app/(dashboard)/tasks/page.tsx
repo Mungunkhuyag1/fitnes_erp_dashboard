@@ -339,7 +339,9 @@ export default function TasksPage() {
         </SheetContent>
       </Sheet>
 
+      {/* `key` — өөр ажил сонгоход маягтыг дахин үүсгэнэ. */}
       <TaskDialog
+        key={`${dialog.open}-${dialog.task?.id ?? 'new'}-${selected}`}
         open={dialog.open}
         task={dialog.task}
         defaultDay={selected}

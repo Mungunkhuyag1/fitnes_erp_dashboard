@@ -135,6 +135,23 @@ export default function HomePage() {
   const router = useRouter();
   const [metric, setMetric] = useState<"revenue" | "visits">("revenue");
 
+  /*
+    Ажлын жагсаалтыг ХУУДАС дээр татна — карт дотороо биш.
+
+    Дээд мөрийг бүхэлд нь нуух эсэхийг шийдэхийн тулд хуудас нь АЖЛЫН
+    ТООГ мэдэх шаардлагатай. Карт өөрөө татах бол энэ мэдээлэл
+    гадагшаа гарах аргагүй.
+
+    ⚠ БҮХ HOOK ЭРТ БУЦАЛТААС ӨМНӨ. Доор `if (loading && !d) return`
+    ба `if (!d) return null` хоёр байгаа тул тэдний ДАРАА hook дуудвал
+    өгөгдөл ирэхэд hook-ын ТОО өөрчлөгдөж React унана
+    («Rendered more hooks than during the previous render»). Энэ нь
+    `tsc` ба build дээр ХЭЗЭЭ Ч илрэхгүй — зөвхөн ажиллах үед.
+  */
+  const todo = useTodo();
+  const todoCount =
+    (todo.data?.items.length ?? 0) + (todo.data?.overdue.length ?? 0);
+
   const chartData = useMemo(
     () =>
       (d?.trend ?? []).map((p) => ({
@@ -170,17 +187,6 @@ export default function HomePage() {
     );
   }
   if (!d) return null;
-
-  /*
-    Ажлын жагсаалтыг ХУУДАС дээр татна — карт дотороо биш.
-
-    Дээд мөрийг бүхэлд нь нуух эсэхийг шийдэхийн тулд хуудас нь АЖЛЫН
-    ТООГ мэдэх шаардлагатай. Карт өөрөө татах бол энэ мэдээлэл
-    гадагшаа гарах аргагүй.
-  */
-  const todo = useTodo();
-  const todoCount =
-    (todo.data?.items.length ?? 0) + (todo.data?.overdue.length ?? 0);
 
   const totalMembers = d.members.active + d.members.expired + d.members.lead;
   const attention = [

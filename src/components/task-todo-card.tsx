@@ -183,6 +183,7 @@ export function TaskTodoCard({
       </CardContent>
 
       <TaskDialog
+        key={task?.id ?? 'none'}
         open={task !== null}
         task={task}
         defaultDay={data?.today ?? ''}
