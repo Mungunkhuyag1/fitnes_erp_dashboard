@@ -478,7 +478,7 @@ export default function SyncPage() {
                   <Icon className={cn('size-3.5', st.tone)} />
                   {st.label}
                   {filter === k && (
-                    <span className="text-primary-ink ml-auto text-[0.65rem] font-medium">
+                    <span className="text-primary ml-auto text-[0.65rem] font-medium">
                       шүүгдсэн
                     </span>
                   )}
@@ -488,7 +488,7 @@ export default function SyncPage() {
                 <p
                   className={cn(
                     'font-mono text-2xl font-semibold tabular-nums',
-                    filter === k && 'text-primary-ink',
+                    filter === k && 'text-primary',
                   )}
                 >
                   {s ? s[k] : '—'}

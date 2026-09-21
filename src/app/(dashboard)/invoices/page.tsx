@@ -376,7 +376,7 @@ export default function InvoicesPage() {
               </Row>
               <Row label="Гишүүн">
                 <button
-                  className="text-primary-ink hover:underline"
+                  className="text-primary hover:underline"
                   onClick={() => router.push(`/members/${detail.memberId}`)}
                 >
                   {detail.memberName ?? '—'}
@@ -418,7 +418,7 @@ export default function InvoicesPage() {
                     href={detail.payUrl}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="text-primary-ink text-xs break-all hover:underline"
+                    className="text-primary text-xs break-all hover:underline"
                   >
                     {detail.payUrl}
                   </a>

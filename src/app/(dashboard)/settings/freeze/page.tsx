@@ -218,7 +218,7 @@ export default function FreezeSettings() {
                 <span
                   className={
                     f.scope === "global"
-                      ? "text-primary-ink w-16 shrink-0 font-medium"
+                      ? "text-primary w-16 shrink-0 font-medium"
                       : "text-muted-foreground w-16 shrink-0"
                   }
                 >
