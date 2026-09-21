@@ -24,7 +24,7 @@ import { useApi } from '@/hooks/use-api';
 
 interface Loaded {
   id: string;
-  memberNo: number;
+  memberNo: string;
   name: string;
   phone: string | null;
   email: string | null;

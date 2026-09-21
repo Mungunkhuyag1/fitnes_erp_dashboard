@@ -39,7 +39,7 @@ interface InvoiceRow {
   id: string;
   memberId: string;
   memberName: string | null;
-  memberNo: number | null;
+  memberNo: string | null;
   packageId: string;
   packageName: string;
   days: number;

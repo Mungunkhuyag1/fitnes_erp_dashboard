@@ -31,7 +31,7 @@ interface Pkg {
 interface MemberOption {
   id: string;
   name: string;
-  memberNo: number;
+  memberNo: string;
   phone: string | null;
 }
 

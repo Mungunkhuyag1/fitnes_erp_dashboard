@@ -47,7 +47,7 @@ interface TopMembers {
   items: {
     id: string;
     name: string;
-    memberNo: number;
+    memberNo: string;
     visits: number;
     lastVisit: string | null;
   }[];

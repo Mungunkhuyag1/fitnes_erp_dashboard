@@ -80,7 +80,7 @@ interface Dash {
     amount: number;
     memberId: string;
     memberName: string | null;
-    memberNo: number | null;
+    memberNo: string | null;
     overdue: boolean;
   }[];
   range: DashRange;

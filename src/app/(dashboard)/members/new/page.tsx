@@ -38,7 +38,7 @@ export default function NewMemberPage() {
     setBusy(true);
     setError(null);
     try {
-      const created = await api.post<{ id: string; memberNo: number }>('/members', {
+      const created = await api.post<{ id: string; memberNo: string }>('/members', {
         name,
         phone,
         email: email || undefined,

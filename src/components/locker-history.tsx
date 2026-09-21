@@ -23,7 +23,7 @@ interface Assignment {
   type: 'daily' | 'rental';
   memberId: string;
   memberName: string | null;
-  memberNo: number | null;
+  memberNo: string | null;
   issuedAt: string;
   dueAt: string | null;
   returnedAt: string | null;

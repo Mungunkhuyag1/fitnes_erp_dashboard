@@ -41,7 +41,7 @@ interface EventRow {
    * сурвалж — терминалаас импортолсон ирцийн ихэнх нь тийм.
    */
   terminalName: string | null;
-  memberNo: number | null;
+  memberNo: string | null;
   eventAt: string;
   granted: boolean;
   reasonLabel: string;
@@ -394,11 +394,16 @@ export default function CheckInsPage() {
         <Input
           value={memberNo}
           onChange={(e) =>
-            // Зөвхөн цифр — «№1001» гэж бичихэд ч ажиллана.
-            setFilter(() => setMemberNo(e.target.value.replace(/\D/g, '')))
+            /*
+              ⚠ ЦИФРЭЭР ХЯЗГААРЛАХГҮЙ.
+
+              Терминал дээр дугаар нь текст байж болно (`Adiya`) тул
+              цифр бишийг арилгавал тэр хүмүүсийг ОГТ хайж чадахгүй.
+              Зөвхөн `№` тэмдэгийг авна — «№1001» гэж бичихэд ч ажиллана.
+            */
+            setFilter(() => setMemberNo(e.target.value.replace(/[№#\s]/g, '')))
           }
           placeholder="№ дугаар"
-          inputMode="numeric"
           className="w-28"
         />
         <FilterSelect

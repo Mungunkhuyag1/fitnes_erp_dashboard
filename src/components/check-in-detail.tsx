@@ -39,7 +39,7 @@ interface Detail {
   reasonLabel: string;
   verifyMode: string | null;
   picturePath: string | null;
-  memberNo: number | null;
+  memberNo: string | null;
   /** Терминал дээр бичигдсэн нэр (регистр салгасан). */
   terminalName: string | null;
   terminalRegister: string | null;
@@ -48,7 +48,7 @@ interface Detail {
   member: {
     id: string;
     name: string;
-    memberNo: number;
+    memberNo: string;
     phone: string | null;
     status: string;
   } | null;

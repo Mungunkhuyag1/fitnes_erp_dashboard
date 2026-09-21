@@ -32,7 +32,7 @@ interface Awaiting {
   id: string;
   memberId: string;
   memberName: string | null;
-  memberNo: number | null;
+  memberNo: string | null;
   packageName: string;
   amount: number;
   paidAt: string | null;

@@ -25,7 +25,7 @@ import { cn } from '@/lib/utils';
 
 interface MemberRow {
   id: string;
-  memberNo: number;
+  memberNo: string;
   name: string;
   phone: string | null;
   status: string;

@@ -65,7 +65,7 @@ import { cn } from '@/lib/utils';
 
 interface MemberDetail {
   id: string;
-  memberNo: number;
+  memberNo: string;
   name: string;
   phone: string | null;
   email: string | null;

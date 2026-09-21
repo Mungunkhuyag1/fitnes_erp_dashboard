@@ -11,7 +11,7 @@ import { cn } from '@/lib/utils';
 
 export interface PickedMember {
   id: string;
-  memberNo: number;
+  memberNo: string;
   name: string;
   phone: string | null;
   status: string;

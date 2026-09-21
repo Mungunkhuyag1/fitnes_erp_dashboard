@@ -28,7 +28,7 @@ interface AuditRow {
   createdAt: string;
   memberId: string | null;
   memberName: string | null;
-  memberNo: number | null;
+  memberNo: string | null;
   staffName: string | null;
   staffEmail: string | null;
 }

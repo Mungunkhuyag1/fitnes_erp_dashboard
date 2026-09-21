@@ -55,7 +55,7 @@ interface OutboxRow {
   topic: string;
   memberId: string | null;
   memberName: string | null;
-  memberNo: number | null;
+  memberNo: string | null;
   phone: string | null;
   status: 'pending' | 'done' | 'failed';
   attempts: number;

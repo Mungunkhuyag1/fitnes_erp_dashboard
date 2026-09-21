@@ -41,7 +41,7 @@ interface LockerCell {
   assignmentId: string | null;
   memberId: string | null;
   memberName: string | null;
-  memberNo: number | null;
+  memberNo: string | null;
   issuedAt: string | null;
   dueAt: string | null;
   note: string | null;

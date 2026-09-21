@@ -58,7 +58,7 @@ interface FieldDiff {
 }
 
 interface DriftRow {
-  employeeNo: number;
+  employeeNo: string;
   name: string;
   fields: FieldDiff[];
 }
@@ -84,7 +84,7 @@ interface Detail {
 /** Хийхээр сонгосон үйлдэл — баталгаажуулах цонхонд дамжина. */
 interface Pending {
   kind: "pull";
-  employeeNo: number;
+  employeeNo: string;
   name: string;
 }
 
@@ -127,7 +127,7 @@ export function DeviceAuditCard() {
     }
   }
 
-  async function act(kind: "push" | "pull", employeeNo: number) {
+  async function act(kind: "push" | "pull", employeeNo: string) {
     setBusy(`${kind}:${employeeNo}`);
     try {
       await api.post(`/sync/run/device-audit/${kind}`, { employeeNo });
@@ -153,7 +153,7 @@ export function DeviceAuditCard() {
     name,
     push,
   }: {
-    employeeNo: number;
+    employeeNo: string;
     name: string;
     push: boolean;
     }) {
