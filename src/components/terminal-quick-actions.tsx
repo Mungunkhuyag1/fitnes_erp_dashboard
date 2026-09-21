@@ -119,9 +119,13 @@ export function TerminalQuickActions({ devices }: { devices: DeviceBrief[] }) {
 
   return (
     <Card>
-      <CardHeader className="flex-row items-center justify-between space-y-0">
+      {/*
+        Утасан дээр ГАРЧИГ БА ТОВЧНУУД ХОЁР МӨРӨНД.
+        Нэг мөрөнд шахвал таван товч 40px өргөн болж бичвэр нь тасрана.
+      */}
+      <CardHeader className="flex-col items-start gap-3 space-y-0 sm:flex-row sm:items-center sm:justify-between">
         <CardTitle className="text-base">Терминал</CardTitle>
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto">
           <Button
             size="sm"
             variant="outline"

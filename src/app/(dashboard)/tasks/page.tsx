@@ -4,12 +4,19 @@ import { CalendarCheck, ChevronLeft, ChevronRight, Plus } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { toast } from 'sonner';
 import { PageHeader } from '@/components/page-header';
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+} from '@/components/ui/sheet';
 import { TaskList, type TaskOccurrence } from '@/components/task-list';
 import { KIND_LABEL, TaskDialog, type TaskRule } from '@/components/task-dialog';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useApi } from '@/hooks/use-api';
+import { useIsMobile } from '@/hooks/use-mobile';
 import { api, qs } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
 import { cn } from '@/lib/utils';
@@ -28,21 +35,25 @@ function dayStr(d: Date): string {
 }
 
 /**
- * Сарын 6×7 нүдний тор.
+ * Сарын тор — ЗӨВХӨН ТУХАЙН САРЫН ӨДРҮҮД.
  *
- * ⚠ Заавал 42 нүд — сар бүр өөр өндөртэй байвал сар сольход бүхэл
- * хуудас үсэрч, нүд ядаргаатай. Тогтмол өндөр нь тайван.
+ * Өмнөх/дараагийн сарын өдрүүдийг бүдэг үсгээр харуулдаг байсан
+ * — тэдгээр нь дарагдах боловч «сараасаа гарсан» гэдгийг анзаарахад
+ * хэцүү. Одоо эхний нүднүүд ХООСОН — `null`.
+ *
+ * Мөрийн тоо сараас хамаарна (4–6). Тогтмол 42 нүд барих нь
+ * хоосон мөр үлдээх тул яг шаардлагатайг нь л зурна.
  */
-function monthGrid(year: number, month0: number): Date[] {
+function monthGrid(year: number, month0: number): (Date | null)[] {
   const first = new Date(year, month0, 1);
   // `getDay()` нь Ням = 0. Даваагаар эхлүүлэхийн тулд шилжүүлнэ.
   const lead = (first.getDay() + 6) % 7;
-  const start = new Date(year, month0, 1 - lead);
-  return Array.from({ length: 42 }, (_, i) => {
-    const d = new Date(start);
-    d.setDate(start.getDate() + i);
-    return d;
-  });
+  const days = new Date(year, month0 + 1, 0).getDate();
+  const cells: (Date | null)[] = Array.from({ length: lead }, () => null);
+  for (let i = 1; i <= days; i++) cells.push(new Date(year, month0, i));
+  // Сүүлийн мөрийг дүүргэнэ — тор тэгш байх ёстой.
+  while (cells.length % 7) cells.push(null);
+  return cells;
 }
 
 /**
@@ -56,7 +67,15 @@ function monthGrid(year: number, month0: number): Date[] {
  */
 export default function TasksPage() {
   const { can } = useAuth();
+  const isMobile = useIsMobile();
   const today = dayStr(new Date());
+  /*
+    Утасан дээр өдрийн жагсаалт ДООРООС гарах цонхоор.
+
+    Хажуудаа байрлуулбал төк доошоо шилжээд календарь дарах бүрд
+    гүйлгэх шаардлагатай болно — өдөр сонгох бүрд дэлгэц үсрэнэ.
+  */
+  const [sheet, setSheet] = useState(false);
 
   const [cursor, setCursor] = useState(() => {
     const d = new Date();
@@ -69,8 +88,9 @@ export default function TasksPage() {
   });
 
   const cells = useMemo(() => monthGrid(cursor.y, cursor.m), [cursor]);
-  const from = dayStr(cells[0]);
-  const to = dayStr(cells[41]);
+  // Муж нь САР ӨӨРӨӨ — тороос хоосон нүд хасагдсан тул.
+  const from = dayStr(new Date(cursor.y, cursor.m, 1));
+  const to = dayStr(new Date(cursor.y, cursor.m + 1, 0));
 
   const { data, loading, reload } = useApi<TaskOccurrence[]>(
     `/tasks/occurrences${qs({ from, to })}`,
@@ -106,6 +126,47 @@ export default function TasksPage() {
   }
 
   const dayItems = byDay.get(selected) ?? [];
+
+  /** Өдрийн ажлууд — ширээний хажуугийн карт ба утасны цонхонд. */
+  const dayPanel = (
+    <div className="space-y-3">
+      <div className="flex items-center gap-2">
+        <CalendarCheck className="text-muted-foreground size-4" />
+        <h2 className="text-sm font-medium">
+          {selected === today ? 'Өнөөдөр' : selected}
+        </h2>
+        <span className="text-muted-foreground ml-auto text-xs tabular-nums">
+          {dayItems.filter((o) => !o.done).length} / {dayItems.length}
+        </span>
+      </div>
+
+      {dayItems.length ? (
+        <TaskList
+          items={dayItems}
+          onChanged={reload}
+          onOpen={edit}
+          canEdit={can('manager')}
+          showKind
+          today={today}
+        />
+      ) : (
+        <p className="text-muted-foreground py-8 text-center text-sm">
+          Энэ өдөр ажил алга
+        </p>
+      )}
+
+      {can('manager') && (
+        <Button
+          variant="outline"
+          className="w-full"
+          onClick={() => setDialog({ open: true, task: null })}
+        >
+          <Plus className="size-4" />
+          Энэ өдөрт нэмэх
+        </Button>
+      )}
+    </div>
+  );
 
   return (
     <div className="space-y-5">
@@ -161,27 +222,32 @@ export default function TasksPage() {
               ))}
 
               {loading && !data
-                ? Array.from({ length: 42 }).map((_, i) => (
-                    <Skeleton key={i} className="h-20" />
+                ? Array.from({ length: 35 }).map((_, i) => (
+                    <Skeleton key={i} className="h-14 sm:h-20" />
                   ))
-                : cells.map((d) => {
+                : cells.map((d, i) => {
+                    // Сараас ГАДНАХ нүд — хоосон зай, дарагдахгүй.
+                    if (!d) return <div key={`b${i}`} aria-hidden />;
+
                     const key = dayStr(d);
                     const items = byDay.get(key) ?? [];
-                    const open = items.filter((o) => !o.done).length;
-                    const inMonth = d.getMonth() === cursor.m;
+                    const undone = items.filter((o) => !o.done);
+                    // Цаг нь өнгөрсөн боловч хийгдээгүй — анхаарах шаардлагатай.
+                    const overdue = key < today && undone.length > 0;
                     return (
                       <button
                         key={key}
                         type="button"
-                        onClick={() => setSelected(key)}
+                        onClick={() => {
+                          setSelected(key);
+                          if (isMobile) setSheet(true);
+                        }}
                         className={cn(
-                          'flex h-20 flex-col items-start gap-0.5 rounded-lg border p-1.5 text-left transition-colors',
+                          'flex h-14 flex-col items-start gap-0.5 rounded-lg border p-1 text-left transition-colors sm:h-20 sm:p-1.5',
                           'hover:bg-accent',
-                          // Өөр сарын өдрийг БҮДЭГ болгоно — тор нь
-                          // тасрахгүй ч анхаарал өнөөгийн сар дээр.
-                          !inMonth && 'text-muted-foreground/50',
                           selected === key && 'ring-primary ring-2',
                           key === today && 'border-primary',
+                          overdue && 'border-destructive/40 bg-destructive/[0.04]',
                         )}
                       >
                         <span
@@ -192,27 +258,59 @@ export default function TasksPage() {
                         >
                           {d.getDate()}
                         </span>
-                        {/* Гурваас илүүг тоогоор — нүд бөглөрөхөөс сэргийлнэ. */}
-                        {items.slice(0, 2).map((o) => (
-                          <span
-                            key={o.key}
-                            className={cn(
-                              'w-full truncate rounded px-1 text-[10px] leading-tight',
-                              o.done
-                                ? 'text-muted-foreground line-through'
-                                : 'bg-primary/10 text-primary',
+
+                        {/*
+                          Утасан дээр ГАРЧИГ БАГТАХГҮЙ — 7 нүд × 40px өргөнд
+                          үсгэнээс юу ч уншигдахгүй. ӨНГӨТ ЦЭГҮҮД болговол
+                          «энэ өдөр ажил байна, хийгдээгүй нь хэд» гэдгийг хэлнэ.
+                        */}
+                        {items.length > 0 && (
+                          <span className="mt-auto flex flex-wrap gap-0.5 sm:hidden">
+                            {items.slice(0, 4).map((o) => (
+                              <span
+                                key={o.key}
+                                className={cn(
+                                  'size-1.5 rounded-full',
+                                  o.done
+                                    ? 'bg-emerald-500/60'
+                                    : key < today
+                                      ? 'bg-destructive'
+                                      : 'bg-primary',
+                                )}
+                              />
+                            ))}
+                            {items.length > 4 && (
+                              <span className="text-muted-foreground text-[9px] leading-none">
+                                +{items.length - 4}
+                              </span>
                             )}
-                          >
-                            {o.atTime ? `${o.atTime} ` : ''}
-                            {o.title}
-                          </span>
-                        ))}
-                        {items.length > 2 && (
-                          <span className="text-muted-foreground text-[10px]">
-                            +{items.length - 2} бусад
                           </span>
                         )}
-                        {open > 0 && items.length <= 2 && <span className="flex-1" />}
+
+                        {/* Ширээнд — гарчиг бүтнээр. */}
+                        <span className="hidden w-full flex-col gap-0.5 sm:flex">
+                          {items.slice(0, 2).map((o) => (
+                            <span
+                              key={o.key}
+                              className={cn(
+                                'w-full truncate rounded px-1 text-[10px] leading-tight',
+                                o.done
+                                  ? 'text-muted-foreground line-through'
+                                  : key < today
+                                    ? 'bg-destructive/10 text-destructive'
+                                    : 'bg-primary/10 text-primary',
+                              )}
+                            >
+                              {o.atTime ? `${o.atTime} ` : ''}
+                              {o.title}
+                            </span>
+                          ))}
+                          {items.length > 2 && (
+                            <span className="text-muted-foreground text-[10px]">
+                              +{items.length - 2} бусад
+                            </span>
+                          )}
+                        </span>
                       </button>
                     );
                   })}
@@ -220,46 +318,26 @@ export default function TasksPage() {
           </CardContent>
         </Card>
 
-        {/* ── Сонгосон өдөр ── */}
-        <Card className="py-0">
-          <CardContent className="space-y-3 p-4">
-            <div className="flex items-center gap-2">
-              <CalendarCheck className="text-muted-foreground size-4" />
-              <h2 className="text-sm font-medium">
-                {selected === today ? 'Өнөөдөр' : selected}
-              </h2>
-              <span className="text-muted-foreground ml-auto text-xs tabular-nums">
-                {dayItems.filter((o) => !o.done).length} / {dayItems.length}
-              </span>
-            </div>
+        {/*
+          ── Сонгосон өдөр ──
 
-            {dayItems.length ? (
-              <TaskList
-                items={dayItems}
-                onChanged={reload}
-                onOpen={edit}
-                canEdit={can('manager')}
-                showKind
-              />
-            ) : (
-              <p className="text-muted-foreground py-8 text-center text-sm">
-                Энэ өдөр ажил алга
-              </p>
-            )}
-
-            {can('manager') && (
-              <Button
-                variant="outline"
-                className="w-full"
-                onClick={() => setDialog({ open: true, task: null })}
-              >
-                <Plus className="size-4" />
-                Энэ өдөрт нэмэх
-              </Button>
-            )}
-          </CardContent>
+          Ширээнд хажуудаа; утасан дээр доороос гарах цонхоор
+          (доор харна). Агуулга нь ИЖИЛ — `dayPanel`-ыг хуваана.
+        */}
+        <Card className="hidden py-0 lg:block">
+          <CardContent className="p-4">{dayPanel}</CardContent>
         </Card>
       </div>
+
+      {/* Утасанд — өдөр дарахад доороос гарах цонх. */}
+      <Sheet open={sheet && isMobile} onOpenChange={setSheet}>
+        <SheetContent side="bottom" className="max-h-[80svh] overflow-y-auto p-4">
+          <SheetHeader className="sr-only">
+            <SheetTitle>{selected} — ажлууд</SheetTitle>
+          </SheetHeader>
+          {dayPanel}
+        </SheetContent>
+      </Sheet>
 
       <TaskDialog
         open={dialog.open}

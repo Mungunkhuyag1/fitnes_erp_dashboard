@@ -301,6 +301,16 @@ export default function HomePage() {
         </div>
       </PageHeader>
 
+      {/*
+        ★ АЖИЛ ХАМГИЙН ДЭЭР — ГҮЙЛГЭЛТГҮЙГЭЭР ХАРАГДНА.
+
+        Үзүүлэлтийн хайрцгууд доор байвал утасан дээр ажил дэлгэцээс
+        гарч, ширээний ажилтан түүнийг ОГТ харахгүй. Тоо, график нь
+        «юу болсон бэ» гэдгийг хэлдэг; ажил нь «юу хийх ёстой вэ» —
+        хоёрдахь нь өдрийн ажилд шууд нөлөөлнө.
+      */}
+      <TaskTodoCard />
+
       <AwaitingApprovalCard />
 
       {/* ── Үзүүлэлтүүд ── */}
@@ -655,9 +665,6 @@ export default function HomePage() {
           </CardContent>
         </Card>
       </div>
-
-      {/* ── Өнөөдрийн ажил ── */}
-      <TaskTodoCard />
 
       {/* ── Терминал ── */}
       {d.devices.length > 0 && <TerminalQuickActions devices={d.devices} />}

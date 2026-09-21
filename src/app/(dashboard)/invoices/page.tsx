@@ -276,7 +276,7 @@ export default function InvoicesPage() {
   ].filter(Boolean) as { label: string; clear: () => void }[];
 
   return (
-    <div className="flex h-full flex-col gap-5">
+    <div className="flex flex-col gap-5 lg:h-full">
       <PageHeader
         title="Төлбөр"
         description="Онлайн нэхэмжлэх ба гүйлгээний түүх"

@@ -56,12 +56,19 @@ export function TaskTodoCard() {
     }
   }
 
-  /** Гүйцэтгээгүй нийт — тэмдэг дээрх тоо. */
-  const openCount = (data?.items.length ?? 0) + (data?.overdue.length ?? 0);
+  /**
+   * Тэмдэг дээрх тоо — ЗӨВХӨН хийгдээгүй.
+   *
+   * Жагсаалтад хийгдсэн ажил ч харагдана (буцаах, засах
+   * боломжтой байхын тулд) ч тэмдэг нь «хийх ажил»-ыг л хэлнэ.
+   */
+  const openCount =
+    (data?.items.filter((o) => !o.done).length ?? 0) + (data?.overdue.length ?? 0);
+  const total = (data?.items.length ?? 0) + (data?.overdue.length ?? 0);
 
   return (
     <Card>
-      <CardHeader className="flex-row items-center justify-between space-y-0">
+      <CardHeader className="flex-row items-center justify-between gap-2 space-y-0">
         <CardTitle className="flex items-center gap-2 text-base">
           <CalendarCheck className="text-muted-foreground size-4" />
           Өнөөдрийн ажил
@@ -83,14 +90,22 @@ export function TaskTodoCard() {
               <Skeleton key={i} className="h-8 w-full" />
             ))}
           </div>
-        ) : openCount === 0 ? (
+        ) : total === 0 ? (
           /* Хоосон нь САЙН мэдээ — үүнийг ойлгомжтой хэлнэ. */
           <div className="text-muted-foreground flex items-center gap-2 py-4 text-sm">
             <CheckCircle2 className="size-4 text-emerald-500" />
-            Өнөөдрийн ажил бүгд хийгдсэн
+            Өнөөдөр төлөвлөгдсөн ажил алга
           </div>
         ) : (
           <div className="space-y-3">
+            {/* Бүгд хийгдсэн үед сайн мэдээг ХЭЛНЭ — гэхдээ жагсаалтыг
+                НУУХГҮЙ: буруу дарсан бол буцаах зам хэрэгтэй. */}
+            {openCount === 0 && (
+              <div className="flex items-center gap-2 rounded-lg bg-emerald-500/10 px-3 py-2 text-sm text-emerald-700 dark:text-emerald-400">
+                <CheckCircle2 className="size-4" />
+                Өнөөдрийн ажил бүгд хийгдсэн
+              </div>
+            )}
             {data!.overdue.length > 0 && (
               <div>
                 <p className="text-destructive mb-1 text-xs font-medium">
@@ -102,6 +117,7 @@ export function TaskTodoCard() {
                   onOpen={openTask}
                   canEdit={can('manager')}
                   showDate
+                  today={data!.today}
                 />
               </div>
             )}
@@ -111,6 +127,7 @@ export function TaskTodoCard() {
                 onChanged={reload}
                 onOpen={openTask}
                 canEdit={can('manager')}
+                today={data!.today}
               />
             )}
           </div>

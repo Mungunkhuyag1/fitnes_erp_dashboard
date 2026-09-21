@@ -42,6 +42,7 @@ export function TaskList({
   canEdit = false,
   showKind = false,
   showDate = false,
+  today,
 }: {
   items: TaskOccurrence[];
   onChanged: () => void;
@@ -61,6 +62,12 @@ export function TaskList({
   showKind?: boolean;
   /** Нүүр хуудсанд — хоцорсон ажлын огноог харуулна. */
   showDate?: boolean;
+  /**
+   * Өнөөдрийн огноо (`YYYY-MM-DD`) — ХОЦОРСОНыг ялгахад.
+   *
+   * Өгөөгүй бол бүх ажил «хүлээгдэж буй» гэж үзэгдэнэ.
+   */
+  today?: string;
 }) {
   const [busy, setBusy] = useState<string | null>(null);
   const [editing, setEditing] = useState<string | null>(null);
@@ -97,8 +104,29 @@ export function TaskList({
 
   return (
     <ul className="divide-border divide-y">
-      {items.map((o) => (
-        <li key={o.key} className="flex items-start gap-2.5 py-2">
+      {items.map((o) => {
+        /*
+          ГУРВАН ТӨЛӨВ — НҮДЭЭР ЯЛГАГДАНА.
+
+          Хоцорсон (цаг нь өнгөрсөн боловч хийгдээгүй) нь үлдсэн
+          хоёроос ТҮРЭЭС өөр: тэр нь алдаагдлыг зааж байгаа тул
+          хүлээгдэж буйгаас ялгахгүй бол үүргээ гүйцэтгэхгүй.
+        */
+        const overdue = !o.done && !!today && o.on < today;
+        return (
+        <li
+          key={o.key}
+          className={cn(
+            'flex items-start gap-2.5 py-2 pl-2',
+            // Зүүн талын зураас — өнгө ялгахгүй хүнд ч илэрнэ.
+            'border-l-2',
+            o.done
+              ? 'border-emerald-500/60'
+              : overdue
+                ? 'border-destructive'
+                : 'border-transparent',
+          )}
+        >
           <Checkbox
             checked={o.done}
             disabled={busy === o.key}
@@ -142,7 +170,14 @@ export function TaskList({
             )}
 
             <div className="text-muted-foreground mt-0.5 flex flex-wrap items-center gap-x-2.5 gap-y-0.5 text-xs">
-              {showDate && <span className="tabular-nums">{o.on}</span>}
+              {overdue && (
+                <span className="text-destructive font-medium">Хоцорсон</span>
+              )}
+              {showDate && (
+                <span className={cn('tabular-nums', overdue && 'text-destructive')}>
+                  {o.on}
+                </span>
+              )}
               {o.atTime && <span className="tabular-nums">{o.atTime}</span>}
               {showKind && o.kind !== 'once' && (
                 <span className="inline-flex items-center gap-1">
@@ -173,7 +208,8 @@ export function TaskList({
             </button>
           )}
         </li>
-      ))}
+        );
+      })}
     </ul>
   );
 }

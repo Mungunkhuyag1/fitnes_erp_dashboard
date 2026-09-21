@@ -306,7 +306,7 @@ export default function CheckInsPage() {
   return (
     // `h-full` — хуудас дэлгэцийг ЯГ дүүргэнэ. Ингэснээр гадна талд
     // гүйх зүйл үлдэхгүй, зөвхөн хүснэгтийн бие дотроо гүйнэ.
-    <div className="flex h-full flex-col gap-4">
+    <div className="flex flex-col gap-4 lg:h-full">
       <PageHeader title="Ирц" description="Терминалын нэвтрэлтийн бүртгэл">
         <Button
           variant="outline"

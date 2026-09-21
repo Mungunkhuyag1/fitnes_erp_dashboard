@@ -87,10 +87,18 @@ interface Props<T> {
    * Үлдсэн өндрийг ДҮҮРГЭЖ, зөвхөн хүснэгтийн БИЕ дотроо гүйнэ.
    *
    * Үүнгүй бол урт жагсаалт хуудсыг сунгаж, карт бүхэлдээ дэлгэцээс
-   * гарах ба хуудаслалт харагдахгүй болно. Дүүргэх горимд толгой,
-   * шүүлтүүр, хуудаслалт үргэлж харагдана.
+   * гарах ба хуудаслалт харагдахгүй болно.
    *
-   * Эцэг элемент нь `flex h-full flex-col` байх ёстой.
+   * ★ ЗӨВХӨН `lg`-ЭЭС ДЭЭШ АЖИЛЛАНА
+   *
+   * Жижиг дэлгэц дээр үзүүлэлтийн хайрцгууд ба шүүлтүүр бүхэл
+   * өндрийг идчихэд `flex-1 min-h-0` нь хүснэгтийн биед НЭГ Ч
+   * пиксел үлдээхгүй — хүснэгт ОГТ ХАРАГДАХГҮЙ болно. Хуудас
+   * өөрөө `h-full` тул давхардаж гадна талын гүйлт ч ажиллахгүй.
+   *
+   * Утасан дээр хүснэгт НЭГ БҮТЭН болж урсах — хуудас өөрөө гүйнэ.
+   *
+   * Эцэг элемент нь `flex flex-col lg:h-full` байх ёстой.
    */
   fill?: boolean;
 }
@@ -122,26 +130,31 @@ export function DataTable<T>({
   return (
     <div
       className={cn(
-        fill ? 'flex min-h-0 flex-1 flex-col gap-3' : 'space-y-3',
+        // Жижиг дэлгэцэд `space-y-3` — хэвийн урсгал.
+        fill
+          ? 'space-y-3 lg:flex lg:min-h-0 lg:flex-1 lg:flex-col lg:gap-3 lg:space-y-0'
+          : 'space-y-3',
       )}
     >
       <Card
         className={cn(
           'overflow-hidden py-0',
-          fill && 'flex min-h-0 flex-1 flex-col',
+          fill && 'lg:flex lg:min-h-0 lg:flex-1 lg:flex-col',
         )}
       >
         <div
           className={cn(
             'overflow-x-auto',
-            fill && 'min-h-0 flex-1 overflow-y-auto',
+            fill && 'lg:min-h-0 lg:flex-1 lg:overflow-y-auto',
           )}
         >
           <Table>
             {/* Урт жагсаалт гүйлгэхэд баганы нэр алга болвол аль багана
                 юу болохыг санахад хэцүү — толгойг наана. */}
             <TableHeader
-              className={cn(fill && 'bg-card sticky top-0 z-10')}
+              // Наах нь БИЕ нь гүйдэг үед л утгатай. Утасан дээр хуудас
+              // өөрөө гүйдэг тул наасан толгой зүгээр л зай эзлэнэ.
+              className={cn(fill && 'bg-card lg:sticky lg:top-0 lg:z-10')}
             >
               <TableRow className="hover:bg-transparent">
                 {columns.map((c) => {
