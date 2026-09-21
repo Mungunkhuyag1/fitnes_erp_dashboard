@@ -214,7 +214,7 @@ function MembersList() {
   return (
     // `h-full` — хуудас дэлгэцийг ЯГ дүүргэнэ. Ингэснээр гадна талд
     // гүйх зүйл үлдэхгүй, зөвхөн хүснэгтийн бие дотроо гүйнэ.
-    <div className="flex flex-col gap-5 lg:h-full">
+    <div className="flex flex-col gap-5">
       <PageHeader title="Гишүүд" description="Хайлт, шүүлтүүр, бүртгэл">
         <LinkButton href="/members/new">
           <Plus className="size-4" />
@@ -294,7 +294,6 @@ function MembersList() {
       )}
 
       <DataTable
-        fill
         data={data}
         columns={columns}
         loading={loading}

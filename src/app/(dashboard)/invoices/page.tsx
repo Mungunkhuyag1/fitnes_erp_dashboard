@@ -276,7 +276,7 @@ export default function InvoicesPage() {
   ].filter(Boolean) as { label: string; clear: () => void }[];
 
   return (
-    <div className="flex flex-col gap-5 lg:h-full">
+    <div className="flex flex-col gap-5">
       <PageHeader
         title="Төлбөр"
         description="Онлайн нэхэмжлэх ба гүйлгээний түүх"
@@ -347,7 +347,6 @@ export default function InvoicesPage() {
       )}
 
       <DataTable
-        fill
         data={data}
         columns={columns}
         loading={loading}

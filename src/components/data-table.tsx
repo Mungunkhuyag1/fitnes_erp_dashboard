@@ -83,24 +83,6 @@ interface Props<T> {
    */
   pageSize?: number;
   onPageSizeChange?: (size: number) => void;
-  /**
-   * Үлдсэн өндрийг ДҮҮРГЭЖ, зөвхөн хүснэгтийн БИЕ дотроо гүйнэ.
-   *
-   * Үүнгүй бол урт жагсаалт хуудсыг сунгаж, карт бүхэлдээ дэлгэцээс
-   * гарах ба хуудаслалт харагдахгүй болно.
-   *
-   * ★ ЗӨВХӨН `lg`-ЭЭС ДЭЭШ АЖИЛЛАНА
-   *
-   * Жижиг дэлгэц дээр үзүүлэлтийн хайрцгууд ба шүүлтүүр бүхэл
-   * өндрийг идчихэд `flex-1 min-h-0` нь хүснэгтийн биед НЭГ Ч
-   * пиксел үлдээхгүй — хүснэгт ОГТ ХАРАГДАХГҮЙ болно. Хуудас
-   * өөрөө `h-full` тул давхардаж гадна талын гүйлт ч ажиллахгүй.
-   *
-   * Утасан дээр хүснэгт НЭГ БҮТЭН болж урсах — хуудас өөрөө гүйнэ.
-   *
-   * Эцэг элемент нь `flex flex-col lg:h-full` байх ёстой.
-   */
-  fill?: boolean;
 }
 
 /**
@@ -123,39 +105,28 @@ export function DataTable<T>({
   onSortChange,
   pageSize,
   onPageSizeChange,
-  fill = false,
 }: Props<T>) {
   const showSkeleton = loading && !data;
 
   return (
-    <div
-      className={cn(
-        // Жижиг дэлгэцэд `space-y-3` — хэвийн урсгал.
-        fill
-          ? 'space-y-3 lg:flex lg:min-h-0 lg:flex-1 lg:flex-col lg:gap-3 lg:space-y-0'
-          : 'space-y-3',
-      )}
-    >
-      <Card
-        className={cn(
-          'overflow-hidden py-0',
-          fill && 'lg:flex lg:min-h-0 lg:flex-1 lg:flex-col',
-        )}
-      >
-        <div
-          className={cn(
-            'overflow-x-auto',
-            fill && 'lg:min-h-0 lg:flex-1 lg:overflow-y-auto',
-          )}
-        >
+    <div className="space-y-3">
+      <Card className="overflow-hidden py-0">
+        {/*
+          ★ ЗӨВХӨН ХЭВТЭЭ ГҮЙЛТ.
+
+          Урьд нь ширээн дээр хүснэгт дэлгэцийн өндрөөр түгжрээд ДОТОРОО
+          гүйдэг байв. Тэгэхээр сүүлийн мөр үргэлж тасарч, хуудас ба
+          хүснэгт ГУРВАН тусдаа гүйлттэй болно — аль нь альдаа гүйхээ мэдэхгүй.
+
+          Одоо хүснэгт НЭГ БҮТЭН: өндөр нь агуулгаараа тодорхойлогдож,
+          хуудас өөрөө гүйнэ. Хажуугийн цэс `SidebarProvider h-svh` тул
+          байрандаа хэвээр.
+        */}
+        <div className="overflow-x-auto">
           <Table>
             {/* Урт жагсаалт гүйлгэхэд баганы нэр алга болвол аль багана
                 юу болохыг санахад хэцүү — толгойг наана. */}
-            <TableHeader
-              // Наах нь БИЕ нь гүйдэг үед л утгатай. Утасан дээр хуудас
-              // өөрөө гүйдэг тул наасан толгой зүгээр л зай эзлэнэ.
-              className={cn(fill && 'bg-card lg:sticky lg:top-0 lg:z-10')}
-            >
+            <TableHeader>
               <TableRow className="hover:bg-transparent">
                 {columns.map((c) => {
                   const sortable = !!c.sortKey && !!onSortChange;

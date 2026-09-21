@@ -13,7 +13,13 @@ import { useState } from 'react';
 import { toast } from 'sonner';
 import { LinkButton } from '@/components/link-button';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import {
+  Card,
+  CardAction,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
 import { api } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
 import { relative } from '@/lib/format';
@@ -120,12 +126,14 @@ export function TerminalQuickActions({ devices }: { devices: DeviceBrief[] }) {
   return (
     <Card>
       {/*
-        Утасан дээр ГАРЧИГ БА ТОВЧНУУД ХОЁР МӨРӨНД.
-        Нэг мөрөнд шахвал таван товч 40px өргөн болж бичвэр нь тасрана.
+        ⚠ `CardHeader` нь GRID. Товчнуудыг `CardAction` дотор тавьж байж
+        баруун талд очно (`grid-cols-[1fr_auto]`). Жижиг дэлгэцэд тэд
+        өөрсдөө мөр тасна.
       */}
-      <CardHeader className="flex-col items-start gap-3 space-y-0 sm:flex-row sm:items-center sm:justify-between">
+      <CardHeader>
         <CardTitle className="text-base">Терминал</CardTitle>
-        <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto">
+        <CardAction className="col-start-1 row-span-1 row-start-2 justify-self-start sm:col-start-2 sm:row-span-2 sm:row-start-1 sm:justify-self-end">
+        <div className="flex flex-wrap items-center gap-2">
           <Button
             size="sm"
             variant="outline"
@@ -183,6 +191,7 @@ export function TerminalQuickActions({ devices }: { devices: DeviceBrief[] }) {
             Дэлгэрэнгүй
           </LinkButton>
         </div>
+        </CardAction>
       </CardHeader>
 
       <CardContent className="flex flex-wrap gap-3">

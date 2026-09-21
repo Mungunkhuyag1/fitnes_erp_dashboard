@@ -277,7 +277,8 @@ export default function HomePage() {
   ].filter((x) => x.value > 0);
 
   return (
-    <div className="space-y-5">
+    // `order-*` ажиллахын тулд эцэг нь flex байх шаардлагатай.
+    <div className="flex flex-col gap-5">
       <PageHeader
         title={`Сайн байна уу, ${user?.name?.split(" ")[0] ?? ""} 👋`}
         description="Өнөөдрийн ирц, орлого, анхаарах зүйлс"
@@ -302,19 +303,103 @@ export default function HomePage() {
       </PageHeader>
 
       {/*
-        ★ АЖИЛ ХАМГИЙН ДЭЭР — ГҮЙЛГЭЛТГҮЙГЭЭР ХАРАГДНА.
+        ★ ДЭЭД МӨР — «ЮУ ХИЙХ ЁСТОЙ ВЭ».
 
-        Үзүүлэлтийн хайрцгууд доор байвал утасан дээр ажил дэлгэцээс
-        гарч, ширээний ажилтан түүнийг ОГТ харахгүй. Тоо, график нь
-        «юу болсон бэ» гэдгийг хэлдэг; ажил нь «юу хийх ёстой вэ» —
-        хоёрдахь нь өдрийн ажилд шууд нөлөөлнө.
+        Ажлын жагсаалт ба анхаарах зүйлс хоёулаа ҮЙЛДЭЛ шаарддаг —
+        тиймээс зэрэгцүүлэв бөгөөд хамгийн дээр. Тоо, график нь «юу
+        болсон бэ» гэдгийг хэлдэг тул доор.
+
+        Урьд нь ажлын жагсаалт БҮТЭН ӨРГӨНӨӨР гагцаараа зогсож, 2-3
+        мөр ажилд хэт том хоосон карт болдог байв.
       */}
-      <TaskTodoCard />
+      <div className="grid gap-4 lg:grid-cols-3">
+        <div className="lg:col-span-2">
+          <TaskTodoCard />
+        </div>
+
+          {/* ── Анхаарах зүйлс ── */}
+          <Card className="flex max-h-[26rem] flex-col">
+            <CardHeader>
+              <CardTitle className="text-base">Анхаарах зүйлс</CardTitle>
+              {attention.length > 0 && (
+                <CardAction>
+                  <span className="bg-muted rounded-md px-1.5 py-0.5 text-xs font-medium tabular-nums">
+                    {attention.length}
+                  </span>
+                </CardAction>
+              )}
+            </CardHeader>
+            {/*
+              Дотроо гүйнэ — жагсаалт уртсахад хуудас бүхэлдээ сунаж, доорх
+              хэсгүүдийг түлхэхгүй. `min-h-0` нь flex хүүхдийг агшихыг
+              зөвшөөрнө; үүнгүй бол `overflow-y-auto` огт ажиллахгүй.
+            */}
+            <CardContent className="min-h-0 flex-1 space-y-2 overflow-y-auto">
+              {attention.length ? (
+                attention.map((a) => {
+                  const Icon = a.icon;
+                  return (
+                    <button
+                      key={a.href + a.label}
+                      type="button"
+                      onClick={() => router.push(a.href)}
+                      className={cn(
+                        "group hover:bg-accent/50 focus-visible:ring-ring/50 flex w-full items-center gap-3 rounded-xl border px-3 py-3 text-left outline-none transition-colors focus-visible:ring-3",
+                        a.danger
+                          ? "border-destructive/25 bg-destructive/[0.03]"
+                          : "border-border",
+                      )}
+                    >
+                      {/* Иконыг дугуй дэвсгэр дээр — жагсаалтын мөрүүд
+                          харааны хувьд тогтвортой эхлэлтэй болно. */}
+                      <span
+                        className={cn(
+                          "flex size-9 shrink-0 items-center justify-center rounded-full",
+                          a.danger
+                            ? "bg-destructive/10 text-destructive"
+                            : "bg-muted text-muted-foreground",
+                        )}
+                      >
+                        <Icon className="size-4" />
+                      </span>
+                      <span className="min-w-0 flex-1">
+                        <span className="block text-sm leading-snug font-medium">
+                          {a.label}
+                        </span>
+                        <span className="text-muted-foreground mt-0.5 block text-xs leading-snug">
+                          {a.hint}
+                        </span>
+                      </span>
+                      <ArrowRight className="text-muted-foreground/50 group-hover:text-foreground size-4 shrink-0 transition-colors" />
+                    </button>
+                  );
+                })
+              ) : (
+                <div className="flex h-full flex-col items-center justify-center py-10 text-center">
+                  <span className="bg-emerald-500/10 mb-3 flex size-11 items-center justify-center rounded-full">
+                    <Check className="size-5 text-emerald-600 dark:text-emerald-400" />
+                  </span>
+                  <p className="text-sm font-medium">Бүх зүйл хэвийн</p>
+                  <p className="text-muted-foreground mt-1 text-xs">
+                    Анхаарал шаардсан зүйл алга
+                  </p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+      </div>
 
       <AwaitingApprovalCard />
 
-      {/* ── Үзүүлэлтүүд ── */}
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      {/*
+        ── Үзүүлэлтүүд ──
+
+        ⚠ Утасан дээр ЭХЭНД (`order-first`). Багана нурахад дээд мөрийн
+        хоёр карт дээсээ зогсож, тоо нь мянган пиксел доошоо ордог.
+        Утсаар нээхэд хамгийн түрүүнд харах зүйл бол өнөөдрийн ирц,
+        орлого. Ширээнд харин дараалал хэвээр — тэнд бүгд зэрэг харагдана.
+      */}
+      <div className="order-first grid gap-4 sm:grid-cols-2 lg:order-none xl:grid-cols-4">
         <StatCard
           label="Өнөөдрийн ирц"
           value={d.today.visits}
@@ -357,9 +442,9 @@ export default function HomePage() {
         />
       </div>
 
-      {/* ── График + хажуугийн самбар ── */}
-      <div className="grid gap-4 lg:grid-cols-3">
-        <Card className="lg:col-span-2">
+      {/* ── График ── «Анхаарах зүйлс» дээшээ гарсан тул бүтэн өргөн. */}
+      <div className="grid gap-4">
+        <Card>
           <CardHeader>
             <div>
               <CardTitle className="text-base">{d.rangeLabel}</CardTitle>
@@ -427,76 +512,6 @@ export default function HomePage() {
           </CardContent>
         </Card>
 
-        {/* ── Анхаарах зүйлс ── */}
-        <Card className="flex max-h-[26rem] flex-col">
-          <CardHeader>
-            <CardTitle className="text-base">Анхаарах зүйлс</CardTitle>
-            {attention.length > 0 && (
-              <CardAction>
-                <span className="bg-muted rounded-md px-1.5 py-0.5 text-xs font-medium tabular-nums">
-                  {attention.length}
-                </span>
-              </CardAction>
-            )}
-          </CardHeader>
-          {/*
-            Дотроо гүйнэ — жагсаалт уртсахад хуудас бүхэлдээ сунаж, доорх
-            хэсгүүдийг түлхэхгүй. `min-h-0` нь flex хүүхдийг агшихыг
-            зөвшөөрнө; үүнгүй бол `overflow-y-auto` огт ажиллахгүй.
-          */}
-          <CardContent className="min-h-0 flex-1 space-y-2 overflow-y-auto">
-            {attention.length ? (
-              attention.map((a) => {
-                const Icon = a.icon;
-                return (
-                  <button
-                    key={a.href + a.label}
-                    type="button"
-                    onClick={() => router.push(a.href)}
-                    className={cn(
-                      "group hover:bg-accent/50 focus-visible:ring-ring/50 flex w-full items-center gap-3 rounded-xl border px-3 py-3 text-left outline-none transition-colors focus-visible:ring-3",
-                      a.danger
-                        ? "border-destructive/25 bg-destructive/[0.03]"
-                        : "border-border",
-                    )}
-                  >
-                    {/* Иконыг дугуй дэвсгэр дээр — жагсаалтын мөрүүд
-                        харааны хувьд тогтвортой эхлэлтэй болно. */}
-                    <span
-                      className={cn(
-                        "flex size-9 shrink-0 items-center justify-center rounded-full",
-                        a.danger
-                          ? "bg-destructive/10 text-destructive"
-                          : "bg-muted text-muted-foreground",
-                      )}
-                    >
-                      <Icon className="size-4" />
-                    </span>
-                    <span className="min-w-0 flex-1">
-                      <span className="block text-sm leading-snug font-medium">
-                        {a.label}
-                      </span>
-                      <span className="text-muted-foreground mt-0.5 block text-xs leading-snug">
-                        {a.hint}
-                      </span>
-                    </span>
-                    <ArrowRight className="text-muted-foreground/50 group-hover:text-foreground size-4 shrink-0 transition-colors" />
-                  </button>
-                );
-              })
-            ) : (
-              <div className="flex h-full flex-col items-center justify-center py-10 text-center">
-                <span className="bg-emerald-500/10 mb-3 flex size-11 items-center justify-center rounded-full">
-                  <Check className="size-5 text-emerald-600 dark:text-emerald-400" />
-                </span>
-                <p className="text-sm font-medium">Бүх зүйл хэвийн</p>
-                <p className="text-muted-foreground mt-1 text-xs">
-                  Анхаарал шаардсан зүйл алга
-                </p>
-              </div>
-            )}
-          </CardContent>
-        </Card>
       </div>
 
       {/* ── Wallet карт + сүүлийн хөдөлгөөн ── */}

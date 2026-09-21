@@ -304,9 +304,8 @@ export default function CheckInsPage() {
   const filtered = activeFilters.length > 0;
 
   return (
-    // `h-full` — хуудас дэлгэцийг ЯГ дүүргэнэ. Ингэснээр гадна талд
-    // гүйх зүйл үлдэхгүй, зөвхөн хүснэгтийн бие дотроо гүйнэ.
-    <div className="flex flex-col gap-4 lg:h-full">
+    // Хуудас нь АГУУЛГААРАА өндөртэй — гүйлт нь `main` дээр, нэг л газар.
+    <div className="flex flex-col gap-4">
       <PageHeader title="Ирц" description="Терминалын нэвтрэлтийн бүртгэл">
         <Button
           variant="outline"
@@ -436,7 +435,6 @@ export default function CheckInsPage() {
       )}
 
       <DataTable
-        fill
         data={data}
         columns={columns}
         loading={loading}

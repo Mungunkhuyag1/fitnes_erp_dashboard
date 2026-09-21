@@ -7,7 +7,13 @@ import { LinkButton } from '@/components/link-button';
 import { TaskDialog, type TaskRule } from '@/components/task-dialog';
 import { TaskList, type TaskOccurrence } from '@/components/task-list';
 import { Badge } from '@/components/ui/badge';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import {
+  Card,
+  CardAction,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useApi } from '@/hooks/use-api';
 import { api } from '@/lib/api';
@@ -68,7 +74,13 @@ export function TaskTodoCard() {
 
   return (
     <Card>
-      <CardHeader className="flex-row items-center justify-between gap-2 space-y-0">
+      {/*
+        ⚠ `CardHeader` нь GRID (`grid-cols-[1fr_auto]` нь `data-slot=card-action`
+        байхад л асана). `flex-row justify-between` гэж бичихэд
+        дэлгэц нь grid хэвээр тул товч ХОЁР ДАХЬ МӨРӨНД буудаг.
+        Зөв зам нь `CardAction`.
+      */}
+      <CardHeader>
         <CardTitle className="flex items-center gap-2 text-base">
           <CalendarCheck className="text-muted-foreground size-4" />
           Өнөөдрийн ажил
@@ -78,9 +90,11 @@ export function TaskTodoCard() {
             </Badge>
           )}
         </CardTitle>
-        <LinkButton size="sm" variant="ghost" href="/tasks">
-          Календарь
-        </LinkButton>
+        <CardAction>
+          <LinkButton size="sm" variant="ghost" href="/tasks">
+            Календарь
+          </LinkButton>
+        </CardAction>
       </CardHeader>
 
       <CardContent>
