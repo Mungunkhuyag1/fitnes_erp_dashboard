@@ -17,6 +17,7 @@ import { LinkButton } from "@/components/link-button";
 import { AwaitingApprovalCard } from "@/components/awaiting-approval-card";
 import { PageHeader } from "@/components/page-header";
 import { StatCard } from "@/components/stat-card";
+import { TaskTodoCard } from "@/components/task-todo-card";
 import { TerminalQuickActions } from "@/components/terminal-quick-actions";
 import { Button } from "@/components/ui/button";
 import {
@@ -654,6 +655,9 @@ export default function HomePage() {
           </CardContent>
         </Card>
       </div>
+
+      {/* ── Өнөөдрийн ажил ── */}
+      <TaskTodoCard />
 
       {/* ── Терминал ── */}
       {d.devices.length > 0 && <TerminalQuickActions devices={d.devices} />}

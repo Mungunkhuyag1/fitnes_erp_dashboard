@@ -2,6 +2,7 @@
 
 import {
   BarChart3,
+  CalendarCheck,
   DoorOpen,
   Gift,
   KeyRound,
@@ -44,6 +45,9 @@ export const NAV: NavGroup[] = [
       { href: '/members', label: 'Гишүүд', icon: Users },
       { href: '/lockers', label: 'Шүүгээ', icon: KeyRound },
       { href: '/check-ins', label: 'Ирц', icon: DoorOpen },
+      // Ажилтны ДОТООД даалгавар — гишүүдэд хамааралгүй тул
+      // «Удирдлага» биш «Ажил» бүлэгт: өдөр тутам харах зүйл.
+      { href: '/tasks', label: 'Ажлын төлөвлөгөө', icon: CalendarCheck },
       { href: '/terminal', label: 'Терминал', icon: MonitorSmartphone },
       { href: '/invoices', label: 'Төлбөр', icon: Receipt },
     ],
