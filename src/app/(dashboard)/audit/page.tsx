@@ -12,6 +12,7 @@ import {
 } from '@/components/ui/dialog';
 import { PageHeader } from '@/components/page-header';
 import { Button } from '@/components/ui/button';
+import { useTableState } from '@/hooks/use-table-state';
 import { useApi } from '@/hooks/use-api';
 import { qs, type Page } from '@/lib/api';
 import { dateTime, money } from '@/lib/format';
@@ -86,16 +87,18 @@ function describe(r: AuditRow): string {
 
 export default function AuditPage() {
   const [action, setAction] = useState('');
-  const [page, setPage] = useState(1);
+  const table = useTableState({ key: 'createdAt', dir: 'DESC' });
+  const { setPage } = table;
   const [detail, setDetail] = useState<AuditRow | null>(null);
   const { data, loading, error } = useApi<Page<AuditRow>>(
-    `/audit${qs({ action: action || undefined, page, limit: 25 })}`,
+    `/audit${qs({ action: action || undefined, ...table.params })}`,
   );
 
   const columns: Column<AuditRow>[] = [
     {
       key: 'when',
       header: 'Цаг',
+      sortKey: 'createdAt',
       cell: (r) => (
         <span className="font-mono text-xs tabular-nums">{dateTime(r.createdAt)}</span>
       ),
@@ -103,6 +106,7 @@ export default function AuditPage() {
     {
       key: 'action',
       header: 'Үйлдэл',
+      sortKey: 'action',
       cell: (r) => (
         <span className="text-sm font-medium">
           {ACTION_LABEL[r.action] ?? r.action}
@@ -188,6 +192,10 @@ export default function AuditPage() {
         rowKey={(r) => r.id}
         emptyText="Бичлэг алга"
         onPageChange={setPage}
+        sort={table.sort}
+        onSortChange={table.setSort}
+        pageSize={table.pageSize}
+        onPageSizeChange={table.setPageSize}
         onRowClick={setDetail}
       />
 

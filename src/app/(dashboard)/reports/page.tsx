@@ -1,5 +1,6 @@
 'use client';
 
+import { useRouter } from 'next/navigation';
 import { useMemo, useState } from 'react';
 import { ChartCard } from '@/components/chart-card';
 import { ColumnChart, DonutChart, TrendChart } from '@/components/charts';
@@ -88,6 +89,7 @@ const TOP_LIMITS: FilterOption[] = [
 ];
 
 export default function ReportsPage() {
+  const router = useRouter();
   const [period, setPeriod] = useState<(typeof PERIODS)[number]['key']>('30');
   // 3 сараас урт хугацаанд өдрөөр бүлэглэвэл цэг хэт олон болно.
   const revenueGroup = period === '365' ? 'month' : period === '90' ? 'week' : 'day';
@@ -461,7 +463,19 @@ export default function ReportsPage() {
                         >
                           {i + 1}
                         </span>
-                        <span className="truncate font-medium">{m.name}</span>
+                        {/*
+                          Нэр дээр дарвал гишүүн рүү. Тайлангаас гарах хамгийн
+                          түгээмэл алхам: «энэ хүн хэн бэ, ажилтан уу» гэж
+                          шалгах. Үүнээс өмнө дугаарыг нь хуулаад гишүүдийн
+                          дэлгэц дээр хайх шаардлагатай байв.
+                        */}
+                        <button
+                          type="button"
+                          onClick={() => router.push(`/members/${m.id}`)}
+                          className="truncate font-medium hover:underline"
+                        >
+                          {m.name}
+                        </button>
                         <span className="text-muted-foreground text-xs">
                           №{m.memberNo}
                         </span>

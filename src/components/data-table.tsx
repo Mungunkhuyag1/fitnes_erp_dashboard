@@ -1,6 +1,9 @@
 'use client';
 
 import {
+  ArrowDown,
+  ArrowUp,
+  ArrowUpDown,
   ChevronLeft,
   ChevronRight,
   ChevronsLeft,
@@ -22,9 +25,27 @@ import {
 import type { Page } from '@/lib/api';
 import { cn } from '@/lib/utils';
 
+/**
+ * Хуудсан дахь мөрийн тооны сонголт.
+ *
+ * Backend-ийн `MAX_LIMIT` нь 200 тул дээд тал нь түүнээс хэтрэхгүй —
+ * хэтэрвэл 400 алдаа буцаана.
+ */
+export const PAGE_SIZES = [50, 100, 150, 200] as const;
+export const DEFAULT_PAGE_SIZE = 50;
+
 export interface Column<T> {
   key: string;
   header: ReactNode;
+  /**
+   * Backend-ийн `sort` параметрын утга. ӨГВӨЛ толгой нь дарах
+   * боломжтой болно.
+   *
+   * ★ СОНГОЛТООР — бүх багана эрэмбэлэгддэггүй. Зураг,
+   * товч зэрэг баганад сум харуулах нь төөрөгдүүлнэ. Мөн энэ
+   * утгыг backend ЦАГААЖСАН жагсаалтаас шалгадаг.
+   */
+  sortKey?: string;
   cell: (row: T) => ReactNode;
   /** Утасны дэлгэцэд нуух (хоёрдогч багана). */
   hideOnMobile?: boolean;
@@ -49,6 +70,19 @@ interface Props<T> {
    */
   empty?: ReactNode;
   onPageChange: (page: number) => void;
+  /**
+   * Одоогийн эрэмбэ. `onSortChange`-тэй ХАМТ өгвөл л толгой
+   * дарах боломжтой болно — хоёрын нэг нь дутвал дарж болох
+   * боловч юу ч болдоггүй толгой гарах байсан.
+   */
+  sort?: { key: string; dir: 'ASC' | 'DESC' };
+  onSortChange?: (sort: { key: string; dir: 'ASC' | 'DESC' }) => void;
+  /**
+   * Нэг хуудасанд хэдэн мөр. `onPageSizeChange`-тэй хамт өгвөл
+   * хуудаслалтын хажууд сонгогч гарна.
+   */
+  pageSize?: number;
+  onPageSizeChange?: (size: number) => void;
   /**
    * Үлдсэн өндрийг ДҮҮРГЭЖ, зөвхөн хүснэгтийн БИЕ дотроо гүйнэ.
    *
@@ -77,6 +111,10 @@ export function DataTable<T>({
   emptyText = 'Бичлэг алга',
   empty,
   onPageChange,
+  sort,
+  onSortChange,
+  pageSize,
+  onPageSizeChange,
   fill = false,
 }: Props<T>) {
   const showSkeleton = loading && !data;
@@ -106,14 +144,65 @@ export function DataTable<T>({
               className={cn(fill && 'bg-card sticky top-0 z-10')}
             >
               <TableRow className="hover:bg-transparent">
-                {columns.map((c) => (
-                  <TableHead
-                    key={c.key}
-                    className={cn(c.hideOnMobile && 'hidden md:table-cell', c.className)}
-                  >
-                    {c.header}
-                  </TableHead>
-                ))}
+                {columns.map((c) => {
+                  const sortable = !!c.sortKey && !!onSortChange;
+                  const active = sortable && sort?.key === c.sortKey;
+                  return (
+                    <TableHead
+                      key={c.key}
+                      className={cn(
+                        c.hideOnMobile && 'hidden md:table-cell',
+                        c.className,
+                      )}
+                      aria-sort={
+                        active
+                          ? sort!.dir === 'ASC'
+                            ? 'ascending'
+                            : 'descending'
+                          : undefined
+                      }
+                    >
+                      {sortable ? (
+                        <button
+                          type="button"
+                          /*
+                            Дарах бүрд ЧИГ солино. Шинэ багана сонгоход
+                            `DESC`-ээс эхэлнэ: огноо, дүнгийн баганад «хамгийн
+                            сүүлийн / хамгийн их» гэдэг нь бараг үргэлж хүссэн зүйл.
+                          */
+                          onClick={() =>
+                            onSortChange({
+                              key: c.sortKey!,
+                              dir:
+                                active && sort!.dir === 'DESC' ? 'ASC' : 'DESC',
+                            })
+                          }
+                          className={cn(
+                            '-mx-2 inline-flex items-center gap-1 rounded px-2 py-1',
+                            'hover:text-foreground transition-colors',
+                            active ? 'text-foreground' : 'text-muted-foreground',
+                            // Баруун зэрэгцүүлсэн баганад товч бас баруундаа.
+                            c.className?.includes('text-right') &&
+                              'flex-row-reverse',
+                          )}
+                        >
+                          {c.header}
+                          {active ? (
+                            sort!.dir === 'ASC' ? (
+                              <ArrowUp className="size-3" />
+                            ) : (
+                              <ArrowDown className="size-3" />
+                            )
+                          ) : (
+                            <ArrowUpDown className="size-3 opacity-40" />
+                          )}
+                        </button>
+                      ) : (
+                        c.header
+                      )}
+                    </TableHead>
+                  );
+                })}
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -186,7 +275,34 @@ export function DataTable<T>({
             бичлэг
             {loading && <Loader2 className="ml-2 inline size-3 animate-spin" />}
           </p>
-          <div className="flex w-full items-center gap-6 lg:w-fit">
+          <div className="flex w-full items-center gap-4 lg:w-fit lg:gap-6">
+            {/*
+              Хуудсан дахь мөрийн тоо.
+
+              ⚠ Хэмжээ солиход ЭХНИЙ хуудас руу. 7-р хуудсан дээр
+              байгаад 200 болговол тэр хуудас огт байхгүй болж хоосон
+              хүснэгт гарна.
+            */}
+            {pageSize !== undefined && onPageSizeChange && (
+              <label className="text-muted-foreground hidden items-center gap-2 text-sm sm:flex">
+                <span className="hidden lg:inline">Мөр</span>
+                <select
+                  value={pageSize}
+                  onChange={(e) => {
+                    onPageSizeChange(Number(e.target.value));
+                    onPageChange(1);
+                  }}
+                  className="border-input bg-background h-8 rounded-md border px-2 text-sm tabular-nums"
+                  aria-label="Хуудсан дахь мөрийн тоо"
+                >
+                  {PAGE_SIZES.map((n) => (
+                    <option key={n} value={n}>
+                      {n}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            )}
             <div className="flex w-fit items-center justify-center text-sm font-medium tabular-nums">
               {data.page} / {Math.max(1, data.totalPages)} хуудас
             </div>

@@ -16,6 +16,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { useTableState } from '@/hooks/use-table-state';
 import { useApi } from "@/hooks/use-api";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
@@ -25,7 +26,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { api, type Page } from "@/lib/api";
+import { api, qs, type Page } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { money } from "@/lib/format";
 import { cn } from "@/lib/utils";
@@ -57,9 +58,10 @@ const AUDIENCES: { value: Audience; label: string }[] = [
 
 export default function PackagesPage() {
   const { can } = useAuth();
-  const [page, setPage] = useState(1);
+  const table = useTableState();
+  const { setPage } = table;
   const { data, loading, error, reload } = useApi<Page<Pkg>>(
-    `/packages?page=${page}&limit=20`,
+    `/packages${qs(table.params)}`,
   );
 
   const [editing, setEditing] = useState<Pkg | null>(null);
@@ -264,6 +266,8 @@ export default function PackagesPage() {
         rowKey={(p) => p.id}
         emptyText="Багц бүртгэгдээгүй"
         onPageChange={setPage}
+        pageSize={table.pageSize}
+        onPageSizeChange={table.setPageSize}
       />
 
       <p className="text-muted-foreground text-xs">

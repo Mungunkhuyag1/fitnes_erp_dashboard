@@ -11,6 +11,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useApi } from '@/hooks/use-api';
+import { useTableState } from '@/hooks/use-table-state';
 import { useAuth } from '@/lib/auth';
 import { api, qs, type Page } from '@/lib/api';
 import { dateTime, money } from '@/lib/format';
@@ -74,13 +75,11 @@ export function LockerHistory() {
   const [type, setType] = useState('');
   const [state, setState] = useState('');
   const [search, setSearch] = useState('');
-  const [page, setPage] = useState(1);
+  const table = useTableState({ key: 'issuedAt', dir: 'DESC' });
+  const { setPage } = table;
   const [reminding, setReminding] = useState<string | null>(null);
 
-  const set = (apply: () => void) => {
-    apply();
-    setPage(1);
-  };
+  const set = table.onFilter;
 
   const { data, loading, error, reload } = useApi<Page<Assignment>>(
     `/locker-assignments${qs({
@@ -90,8 +89,7 @@ export function LockerHistory() {
       // `returned` талбар backend-д байхгүй тул `outstanding=false` гэж явна.
       ...(state === 'returned' ? { outstanding: false } : {}),
       q: search.trim() || undefined,
-      page,
-      limit: 25,
+      ...table.params,
     })}`,
   );
 
@@ -154,6 +152,7 @@ export function LockerHistory() {
     {
       key: 'issued',
       header: 'Олгосон',
+      sortKey: 'issuedAt',
       cell: (a) => (
         <span className="text-muted-foreground font-mono text-xs">
           {dateTime(a.issuedAt)}
@@ -164,6 +163,7 @@ export function LockerHistory() {
     {
       key: 'returned',
       header: 'Буцаасан',
+      sortKey: 'returnedAt',
       cell: (a) =>
         a.returnedAt ? (
           <span className="text-muted-foreground font-mono text-xs">
@@ -260,6 +260,10 @@ export function LockerHistory() {
         rowKey={(a) => a.id}
         onRowClick={(a) => router.push(`/members/${a.memberId}`)}
         onPageChange={setPage}
+        sort={table.sort}
+        onSortChange={table.setSort}
+        pageSize={table.pageSize}
+        onPageSizeChange={table.setPageSize}
         empty={
           <EmptyState
             icon={filtered ? Search : KeyRound}

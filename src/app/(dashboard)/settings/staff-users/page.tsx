@@ -41,8 +41,9 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { useTableState } from '@/hooks/use-table-state';
 import { useApi } from '@/hooks/use-api';
-import { api, type Page } from '@/lib/api';
+import { api, qs, type Page } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
 import { relative } from '@/lib/format';
 import { cn } from '@/lib/utils';
@@ -144,9 +145,10 @@ const MATRIX: { group: string; rows: [string, boolean, boolean, boolean][] }[] =
 
 export default function StaffUsersPage() {
   const { user } = useAuth();
-  const [page, setPage] = useState(1);
+  const table = useTableState();
+  const { setPage } = table;
   const { data, loading, error, reload } = useApi<Page<Staff>>(
-    `/staff?page=${page}&limit=20`,
+    `/staff${qs(table.params)}`,
   );
   const { data: resets, reload: reloadResets } =
     useApi<ResetRequest[]>('/staff/password-resets');
@@ -376,6 +378,8 @@ export default function StaffUsersPage() {
         rowKey={(s) => s.id}
         emptyText="Ажилтан алга"
         onPageChange={setPage}
+        pageSize={table.pageSize}
+        onPageSizeChange={table.setPageSize}
       />
 
       <RoleMatrix />

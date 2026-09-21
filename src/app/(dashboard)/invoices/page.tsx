@@ -18,6 +18,7 @@ import { StatCard } from '@/components/stat-card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useApi } from '@/hooks/use-api';
+import { useTableState } from '@/hooks/use-table-state';
 import { useDebounce } from '@/hooks/use-debounce';
 import { useNow } from '@/hooks/use-now';
 import { qs, type Page } from '@/lib/api';
@@ -136,8 +137,10 @@ export default function InvoicesPage() {
   const [search, setSearch] = useState('');
   const [status, setStatus] = useState('');
   const [packageId, setPackageId] = useState('');
-  const [page, setPage] = useState(1);
   const q = useDebounce(search);
+
+  const table = useTableState({ key: 'createdAt', dir: 'DESC' });
+  const { setPage } = table;
 
   const { data: packages } = useApi<Page<PackageRow>>('/packages?limit=100');
 
@@ -147,10 +150,9 @@ export default function InvoicesPage() {
         q: q || undefined,
         status: status || undefined,
         packageId: packageId || undefined,
-        page,
-        limit: 20,
+        ...table.params,
       })}`,
-    [q, status, packageId, page],
+    [q, status, packageId, table.params],
   );
   const { data, loading, error } = useApi<Page<InvoiceRow>>(path);
 
@@ -210,6 +212,7 @@ export default function InvoicesPage() {
     {
       key: 'amount',
       header: 'Дүн',
+      sortKey: 'amount',
       cell: (i) => (
         <span className="font-medium tabular-nums">{money(i.amount)}</span>
       ),
@@ -217,6 +220,7 @@ export default function InvoicesPage() {
     {
       key: 'status',
       header: 'Төлөв',
+      sortKey: 'status',
       cell: (i) => (
         <span
           className={cn(
@@ -250,6 +254,7 @@ export default function InvoicesPage() {
     {
       key: 'created',
       header: 'Үүссэн',
+      sortKey: 'createdAt',
       cell: (i) => (
         <span className="text-muted-foreground font-mono text-xs">
           {dateTime(i.createdAt)}
@@ -350,6 +355,10 @@ export default function InvoicesPage() {
         rowKey={(i) => i.id}
         emptyText="Нэхэмжлэх алга"
         onPageChange={setPage}
+        sort={table.sort}
+        onSortChange={table.setSort}
+        pageSize={table.pageSize}
+        onPageSizeChange={table.setPageSize}
         onRowClick={setDetail}
       />
 

@@ -24,6 +24,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useApi } from '@/hooks/use-api';
+import { useTableState } from '@/hooks/use-table-state';
 import { useDebounce } from '@/hooks/use-debounce';
 import { qs, type Page } from '@/lib/api';
 import { downloadCsv } from '@/lib/csv';
@@ -112,19 +113,15 @@ export default function CheckInsPage() {
   const [result, setResult] = useState('');
   const [reason, setReason] = useState('');
   const [search, setSearch] = useState('');
-  const [page, setPage] = useState(1);
   /** Дэлгэрэнгүй цонх нээх ирцийн ID. */
   const [detailId, setDetailId] = useState<string | null>(null);
+
+  const table = useTableState({ key: 'eventAt', dir: 'DESC' });
+  const { setPage, onFilter: setFilter } = table;
 
   const q = useDebounce(search);
   const days = RANGES.find((x) => x.key === range)!.days;
   const live = range === 'today';
-
-  /** Шүүлтүүр солигдоход эхний хуудас руу буцна — 7-р хуудсанд үлдвэл хоосон харагдана. */
-  const setFilter = (apply: () => void) => {
-    apply();
-    setPage(1);
-  };
 
   const { data, loading, error } = useApi<Page<EventRow>>(
     `/access-events${qs({
@@ -132,8 +129,7 @@ export default function CheckInsPage() {
       granted: result || undefined,
       reason: reason || undefined,
       q: q || undefined,
-      page,
-      limit: 25,
+      ...table.params,
     })}`,
     { refreshMs: live ? 20_000 : undefined },
   );
@@ -207,6 +203,7 @@ export default function CheckInsPage() {
     {
       key: 'when',
       header: 'Цаг',
+      sortKey: 'eventAt',
       cell: (e) => (
         <div className="leading-tight">
           {/* Өнөөдрийн жагсаалтад огноо нь БҮГД ижил тул зөвхөн цагийг
@@ -224,6 +221,8 @@ export default function CheckInsPage() {
     {
       key: 'who',
       header: 'Гишүүн',
+      // Терминал дээрх ДУГААРААР — нэр нь бусад хүснэгтээс ирдэг тул.
+      sortKey: 'memberNo',
       // ⚠ Өргөнийг ЗОРИУДААР өгөхгүй. `table-auto`-д бүх багана хэмжээтэй
       // байвал үлдсэн зай БҮГДЭД нь хуваарилагдаж, багана бүр хоорондоо
       // цоорхойтой болно. Ганц багана чөлөөтэй байвал үлдсэн зайг тэр
@@ -270,6 +269,7 @@ export default function CheckInsPage() {
     {
       key: 'reason',
       header: 'Үр дүн',
+      sortKey: 'reason',
       cell: (e) => (
         <Badge
           variant="outline"
@@ -288,6 +288,7 @@ export default function CheckInsPage() {
     {
       key: 'verify',
       header: 'Танилт',
+      sortKey: 'verify',
       cell: (e) => (
         <span className="text-muted-foreground text-xs">
           {e.verifyMode ? (VERIFY_LABEL[e.verifyMode] ?? e.verifyMode) : '—'}
@@ -451,6 +452,10 @@ export default function CheckInsPage() {
          */
         onRowClick={(e) => setDetailId(e.id)}
         onPageChange={setPage}
+        sort={table.sort}
+        onSortChange={table.setSort}
+        pageSize={table.pageSize}
+        onPageSizeChange={table.setPageSize}
         empty={
           filtered ? (
             <EmptyState

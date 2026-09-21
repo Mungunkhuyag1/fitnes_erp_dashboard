@@ -18,6 +18,7 @@ import { PageHeader } from '@/components/page-header';
 import { DaysLeft, StatusBadge } from '@/components/status-badge';
 import { Input } from '@/components/ui/input';
 import { useApi } from '@/hooks/use-api';
+import { useTableState } from '@/hooks/use-table-state';
 import { useDebounce } from '@/hooks/use-debounce';
 import { qs, type Page } from '@/lib/api';
 import { phone as fmtPhone, relative } from '@/lib/format';
@@ -85,8 +86,10 @@ function MembersList() {
   // Нүүр хуудасны анхааруулгаас  гэж шууд орж ирнэ.
   const [noPhone, setNoPhone] = useState(params.get('noPhone') ?? '');
   const [cardStage, setCardStage] = useState(params.get('cardStage') ?? '');
-  const [page, setPage] = useState(1);
   const q = useDebounce(search);
+
+  const table = useTableState({ key: 'createdAt', dir: 'DESC' });
+  const { setPage } = table;
 
   const path = useMemo(
     () =>
@@ -97,18 +100,14 @@ function MembersList() {
         faceEnrolled: face || undefined,
         cardStage: cardStage || undefined,
         noPhone: noPhone || undefined,
-        page,
-        limit: 20,
+        ...table.params,
       })}`,
-    [q, status, expiring, face, cardStage, noPhone, page],
+    [q, status, expiring, face, cardStage, noPhone, table.params],
   );
 
   const { data, loading, error } = useApi<Page<MemberRow>>(path);
 
-  const setFilter = (fn: () => void) => {
-    fn();
-    setPage(1);
-  };
+  const setFilter = table.onFilter;
 
   const activeFilters = [
     status && {
@@ -136,6 +135,7 @@ function MembersList() {
   const columns: Column<MemberRow>[] = [
     {
       key: 'no',
+      sortKey: 'memberNo',
       header: '№',
       cell: (m) => (
         <span className="text-muted-foreground font-mono text-xs tabular-nums">
@@ -146,6 +146,7 @@ function MembersList() {
     },
     {
       key: 'name',
+      sortKey: 'name',
       header: 'Нэр',
       cell: (m) => (
         <div className="flex items-center gap-2">
@@ -188,6 +189,7 @@ function MembersList() {
     { key: 'status', header: 'Төлөв', cell: (m) => <StatusBadge status={m.status} /> },
     {
       key: 'days',
+      sortKey: 'endsAt',
       header: 'Үлдсэн',
       cell: (m) => <DaysLeft days={m.daysLeft} />,
       hideOnMobile: true,
@@ -200,6 +202,7 @@ function MembersList() {
     },
     {
       key: 'visit',
+      sortKey: 'lastVisit',
       header: 'Сүүлд ирсэн',
       cell: (m) => (
         <span className="text-muted-foreground text-sm">{relative(m.lastVisitAt)}</span>
@@ -300,6 +303,10 @@ function MembersList() {
         onRowClick={(m) => router.push(`/members/${m.id}`)}
         emptyText="Гишүүн олдсонгүй"
         onPageChange={setPage}
+        sort={table.sort}
+        onSortChange={table.setSort}
+        pageSize={table.pageSize}
+        onPageSizeChange={table.setPageSize}
       />
     </div>
   );

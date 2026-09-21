@@ -44,6 +44,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import { useTableState } from '@/hooks/use-table-state';
 import { useApi } from '@/hooks/use-api';
 import { api, qs, type Page } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
@@ -98,7 +99,8 @@ const STATUS: Record<string, { label: string; tone: string; icon: React.ElementT
 export default function SyncPage() {
   const { can } = useAuth();
   const [filter, setFilter] = useState<'' | 'failed' | 'pending' | 'done'>('');
-  const [page, setPage] = useState(1);
+  const table = useTableState();
+  const { setPage } = table;
 
   const { data: status, reload: reloadStatus } = useApi<{
     outbox: { pending: number; done: number; failed: number };
@@ -106,7 +108,7 @@ export default function SyncPage() {
   }>('/sync/status', { refreshMs: 15_000 });
 
   const { data, loading, error, reload } = useApi<Page<OutboxRow>>(
-    `/sync/outbox${qs({ status: filter || undefined, page, limit: 20 })}`,
+    `/sync/outbox${qs({ status: filter || undefined, ...table.params })}`,
     { refreshMs: 15_000 },
   );
 
@@ -519,6 +521,8 @@ export default function SyncPage() {
         rowKey={(r) => r.id}
         emptyText="Бичлэг алга"
         onPageChange={setPage}
+        pageSize={table.pageSize}
+        onPageSizeChange={table.setPageSize}
         onRowClick={setDetail}
       />
 

@@ -32,6 +32,7 @@ import { GENDER_LABEL } from '@/components/gender-picker';
 import { ExtendDialog } from '@/components/extend-dialog';
 import { LinkButton } from '@/components/link-button';
 import { PageHeader } from '@/components/page-header';
+import { RecordDialog } from '@/components/record-dialog';
 import { StaffLinkField } from '@/components/staff-link-field';
 import { CheckInDetail } from '@/components/check-in-detail';
 import { TerminalImage } from '@/components/terminal-image';
@@ -54,7 +55,8 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { MemberFreezeCard } from '@/components/member-freeze-card';
 import { useApi } from '@/hooks/use-api';
-import { api, type Page } from '@/lib/api';
+import { useTableState } from '@/hooks/use-table-state';
+import { api, qs, type Page } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
 import {
   date,
@@ -176,19 +178,27 @@ export default function MemberDetailPage() {
   const [action, setAction] = useState<'suspend' | 'resume' | 'cancel' | null>(null);
   const [reason, setReason] = useState('');
   const [busy, setBusy] = useState(false);
-  const [page, setPage] = useState(1);
-  const [evPage, setEvPage] = useState(1);
-  const [lkPage, setLkPage] = useState(1);
+  /*
+    Гурван таб ГУРВАН төлөвтэй. Нэгийг хуваавал өөр таб руу
+    шилжихэд одоогийн хуудас/эрэмбэ нь дагаж, байхгүй баганаар
+    эрэмбэлэх гэж 400 алдаа өгнө.
+  */
+  const msTable = useTableState({ key: 'createdAt', dir: 'DESC' });
+  const evTable = useTableState({ key: 'eventAt', dir: 'DESC' });
+  const lkTable = useTableState({ key: 'issuedAt', dir: 'DESC' });
+  /** Дарсан мөрүүд — дэлгэрэнгүй цонхонд. */
+  const [msRow, setMsRow] = useState<MembershipRow | null>(null);
+  const [lkRow, setLkRow] = useState<LockerRow | null>(null);
   /** Дэлгэрэнгүй цонх нээх ирцийн ID. */
   const [detailId, setDetailId] = useState<string | null>(null);
   const [syncing, setSyncing] = useState<'loopy' | 'device' | null>(null);
   const [returning, setReturning] = useState<string | null>(null);
 
   const { data: memberships, reload: reloadMs } = useApi<Page<MembershipRow>>(
-    `/members/${id}/memberships?limit=10&page=${page}`,
+    `/members/${id}/memberships${qs(msTable.params)}`,
   );
   const { data: events } = useApi<Page<EventRow>>(
-    `/access-events?memberId=${id}&limit=10&page=${evPage}`,
+    `/access-events${qs({ memberId: id, ...evTable.params })}`,
   );
   // Энэ гишүүнд хийгдсэн ГАР үйлдлүүд. `can('manager')` шалгах шаардлагагүй:
   // эрхгүй бол backend 403 буцаах ба `useApi` алдааг чимээгүй барина.
@@ -196,7 +206,7 @@ export default function MemberDetailPage() {
     `/audit?entity=member&entityId=${id}&limit=10`,
   );
   const { data: lockers, reload: reloadLockers } = useApi<Page<LockerRow>>(
-    `/members/${id}/lockers?limit=10&page=${lkPage}`,
+    `/members/${id}/lockers${qs(lkTable.params)}`,
   );
 
   async function runAction() {
@@ -313,6 +323,7 @@ export default function MemberDetailPage() {
     {
       key: 'when',
       header: 'Цаг',
+      sortKey: 'eventAt',
       cell: (e) => (
         <span className="font-mono text-sm tabular-nums">
           {dateTime(e.eventAt)}
@@ -387,6 +398,7 @@ export default function MemberDetailPage() {
     {
       key: 'issued',
       header: 'Олгосон',
+      sortKey: 'issuedAt',
       cell: (l) => <span className="text-sm">{date(l.issuedAt)}</span>,
       className: 'w-32',
       hideOnMobile: true,
@@ -394,6 +406,7 @@ export default function MemberDetailPage() {
     {
       key: 'until',
       header: 'Төлөв',
+      sortKey: 'dueAt',
       cell: (l) => (
         <span
           className={cn(
@@ -437,7 +450,12 @@ export default function MemberDetailPage() {
   ];
 
   const msColumns: Column<MembershipRow>[] = [
-    { key: 'date', header: 'Огноо', cell: (r) => date(r.createdAt) },
+    {
+      key: 'date',
+      header: 'Огноо',
+      sortKey: 'createdAt',
+      cell: (r) => date(r.createdAt),
+    },
     {
       key: 'pkg',
       header: 'Багц',
@@ -450,6 +468,7 @@ export default function MemberDetailPage() {
     {
       key: 'amount',
       header: 'Дүн',
+      sortKey: 'amount',
       cell: (r) => (
         <span className={cn('text-sm', r.reversedAt && 'text-muted-foreground line-through')}>
           {money(r.amount)}
@@ -465,6 +484,7 @@ export default function MemberDetailPage() {
     {
       key: 'ends',
       header: 'Хүртэл',
+      sortKey: 'endsAt',
       cell: (r) => date(r.endsAt),
       hideOnMobile: true,
     },
@@ -763,7 +783,12 @@ export default function MemberDetailPage() {
             columns={msColumns}
             rowKey={(r) => r.id}
             emptyText="Худалдан авалт алга"
-            onPageChange={setPage}
+            onRowClick={setMsRow}
+            onPageChange={msTable.setPage}
+            sort={msTable.sort}
+            onSortChange={msTable.setSort}
+            pageSize={msTable.pageSize}
+            onPageSizeChange={msTable.setPageSize}
           />
         </TabsContent>
 
@@ -779,7 +804,11 @@ export default function MemberDetailPage() {
             rowKey={(r) => r.id}
             onRowClick={(r) => setDetailId(r.id)}
             emptyText="Ирц алга"
-            onPageChange={setEvPage}
+            onPageChange={evTable.setPage}
+            sort={evTable.sort}
+            onSortChange={evTable.setSort}
+            pageSize={evTable.pageSize}
+            onPageSizeChange={evTable.setPageSize}
           />
         </TabsContent>
 
@@ -789,7 +818,12 @@ export default function MemberDetailPage() {
             columns={lkColumns}
             rowKey={(r) => r.id}
             emptyText="Шүүгээний бүртгэл алга"
-            onPageChange={setLkPage}
+            onRowClick={setLkRow}
+            onPageChange={lkTable.setPage}
+            sort={lkTable.sort}
+            onSortChange={lkTable.setSort}
+            pageSize={lkTable.pageSize}
+            onPageSizeChange={lkTable.setPageSize}
           />
         </TabsContent>
 
@@ -833,6 +867,104 @@ export default function MemberDetailPage() {
       </Tabs>
 
       <CheckInDetail id={detailId} onClose={() => setDetailId(null)} />
+
+      {/*
+        Худалдан авалтын дэлгэрэнгүй.
+
+        Хүснэгтэд багтахгүй тул утасны дэлгэцээс хэд хэдэн багана
+        нуугддаг (`hideOnMobile`) — яг тэдгээрийг энд бүртнээр харуулна.
+      */}
+      <RecordDialog
+        open={msRow !== null}
+        onClose={() => setMsRow(null)}
+        title="Худалдан авалт"
+        fields={
+          msRow
+            ? [
+                { label: 'Огноо', value: dateTime(msRow.createdAt) },
+                {
+                  label: 'Багц',
+                  value: msRow.packageName ?? `${msRow.days} хоног (гараар)`,
+                },
+                { label: 'Хоног', value: `${msRow.days} хоног` },
+                { label: 'Дүн', value: money(msRow.amount) },
+                {
+                  label: 'Хэлбэр',
+                  value: SOURCE_LABEL[msRow.source] ?? msRow.source,
+                },
+                { label: 'Эрх дуусах', value: date(msRow.endsAt) },
+                ...(msRow.reason
+                  ? [{ label: 'Шалтгаан', value: msRow.reason }]
+                  : []),
+                ...(msRow.reversedAt
+                  ? [
+                      {
+                        label: 'Буцаасан',
+                        value: (
+                          <span className="text-destructive">
+                            {dateTime(msRow.reversedAt)}
+                          </span>
+                        ),
+                      },
+                    ]
+                  : []),
+              ]
+            : []
+        }
+      />
+
+      <RecordDialog
+        open={lkRow !== null}
+        onClose={() => setLkRow(null)}
+        title="Шүүгээний бүртгэл"
+        fields={
+          lkRow
+            ? [
+                { label: 'Шүүгээ', value: `${lkRow.zone} №${lkRow.number}` },
+                {
+                  label: 'Төрөл',
+                  value: lkRow.type === 'rental' ? 'Түрээс' : 'Өдрийн',
+                },
+                { label: 'Төлбөр', value: money(lkRow.amount) },
+                { label: 'Олгосон', value: dateTime(lkRow.issuedAt) },
+                {
+                  label: 'Дуусах',
+                  value: lkRow.dueAt ? date(lkRow.dueAt) : '—',
+                },
+                {
+                  label: 'Төлөв',
+                  value: lkRow.returnedAt ? (
+                    `Буцаав ${dateTime(lkRow.returnedAt)}`
+                  ) : lkRow.overdue ? (
+                    <span className="text-destructive">Хоцросон</span>
+                  ) : (
+                    'Гарсан хэвээр'
+                  ),
+                },
+              ]
+            : []
+        }
+        footer={
+          lkRow && !lkRow.returnedAt ? (
+            <Button
+              variant="outline"
+              /*
+                Цонхыг АМЖИЛТТАЙ болсны ДАРАА хаана. Шууд хаавал
+                алдаа гарсан тохиолдолд ажилтан жагсаалтаа хараад «болсон
+                байх байлгүй дээ» гэж бодох эрсдэлтэй.
+              */
+              onClick={async () => {
+                await returnLocker(lkRow);
+                setLkRow(null);
+              }}
+              disabled={returning === lkRow.id}
+            >
+              <Undo2 className="size-4" />
+              Түлхүүр буцаах
+            </Button>
+          ) : null
+        }
+      />
 
       <ExtendDialog
         memberId={m.id}
