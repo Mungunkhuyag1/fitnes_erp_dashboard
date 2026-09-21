@@ -112,20 +112,11 @@ export default function CheckInsPage() {
   const [result, setResult] = useState('');
   const [reason, setReason] = useState('');
   const [search, setSearch] = useState('');
-  /**
-   * Терминал дээрх дугаараар шүүх.
-   *
-   * ⚠ Нэрээр хайх талбараас ТУСДАА: нэрийн хайлт нь `members` хүснэгтээр
-   * дамждаг тул WinFit-д бүртгэлгүй уншуулалтыг ОГТ олохгүй. Терминалаас
-   * импортолсон түүхийн ихэнх нь яг тийм байдаг.
-   */
-  const [memberNo, setMemberNo] = useState('');
   const [page, setPage] = useState(1);
   /** Дэлгэрэнгүй цонх нээх ирцийн ID. */
   const [detailId, setDetailId] = useState<string | null>(null);
 
   const q = useDebounce(search);
-  const no = useDebounce(memberNo);
   const days = RANGES.find((x) => x.key === range)!.days;
   const live = range === 'today';
 
@@ -141,7 +132,6 @@ export default function CheckInsPage() {
       granted: result || undefined,
       reason: reason || undefined,
       q: q || undefined,
-      memberNo: no.trim() || undefined,
       page,
       limit: 25,
     })}`,
@@ -172,17 +162,12 @@ export default function CheckInsPage() {
       label: `Хайлт: ${q}`,
       clear: () => setFilter(() => setSearch('')),
     },
-    no.trim() && {
-      label: `№${no.trim()}`,
-      clear: () => setFilter(() => setMemberNo('')),
-    },
   ].filter(Boolean) as { label: string; clear: () => void }[];
 
   const clearAll = () =>
     setFilter(() => {
       setResult('');
       setReason('');
-      setMemberNo('');
       setSearch('');
     });
 
@@ -383,29 +368,18 @@ export default function CheckInsPage() {
           <Input
             value={search}
             onChange={(e) => setFilter(() => setSearch(e.target.value))}
-            placeholder="Гишүүний нэр эсвэл утсаар хайх…"
+            /*
+              ★ НЭГ ТАЛБАР — НЭР, УТАС, № ГУРВУУЛАНД.
+
+              Үүнээс өмнө дугаарт тусдаа талбар байсан — ажилтан аль нь
+              альд байгааг сонгох шаардлагатай болдог байв. Backend одоо гурвууланг
+              НЭГ `q`-аас хайна (`access.service`): дугаарыг гишүүнгүй мөр дээр
+              ч шалгадаг тул терминалаас ирсэн бүртгэлгүй уншуулалт ч олдоно.
+            */
+            placeholder="Нэр, утас эсвэл № дугаараар хайх…"
             className="pl-9"
           />
         </div>
-        {/*
-          Дугаараар шүүх — нэрийн хайлтаас тусдаа. Терминалаас импортолсон
-          ирцийн ихэнх нь WinFit-д гишүүнгүй тул нэрээр олдохгүй.
-        */}
-        <Input
-          value={memberNo}
-          onChange={(e) =>
-            /*
-              ⚠ ЦИФРЭЭР ХЯЗГААРЛАХГҮЙ.
-
-              Терминал дээр дугаар нь текст байж болно (`Adiya`) тул
-              цифр бишийг арилгавал тэр хүмүүсийг ОГТ хайж чадахгүй.
-              Зөвхөн `№` тэмдэгийг авна — «№1001» гэж бичихэд ч ажиллана.
-            */
-            setFilter(() => setMemberNo(e.target.value.replace(/[№#\s]/g, '')))
-          }
-          placeholder="№ дугаар"
-          className="w-28"
-        />
         <FilterSelect
           value={range}
           onChange={(v) => setFilter(() => setRange(v as RangeKey))}

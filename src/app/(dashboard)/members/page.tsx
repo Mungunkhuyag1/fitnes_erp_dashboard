@@ -230,7 +230,12 @@ function MembersList() {
               setSearch(e.target.value);
               setPage(1);
             }}
-            placeholder="Нэр эсвэл утсаар хайх…"
+            /*
+              № дугаар бас энд — тусдаа талбар нэмэхгүй. Backend нь
+              дугаарыг ЯГ таарахаар жишнэ (`member.service`): «5» гэж бичихэд
+              №15, №455 гарахгүй.
+            */
+            placeholder="Нэр, утас эсвэл № дугаараар хайх…"
             className="pl-9"
           />
         </div>

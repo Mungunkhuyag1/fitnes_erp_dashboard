@@ -3,6 +3,7 @@
 import { useMemo, useState } from 'react';
 import { ChartCard } from '@/components/chart-card';
 import { ColumnChart, DonutChart, TrendChart } from '@/components/charts';
+import { FilterSelect, type FilterOption } from '@/components/filter-select';
 import { PageHeader } from '@/components/page-header';
 import { StatCard } from '@/components/stat-card';
 import { Button } from '@/components/ui/button';
@@ -78,6 +79,14 @@ const STATUS_LABEL: Record<string, string> = {
 /** `2026-08-17` → `08/17`, `2026-08` → `2026-08` (сарын багц аль хэдийн богино). */
 const shortBucket = (b: string) => (b.length > 7 ? b.slice(5).replace('-', '/') : b);
 
+/** Жагсаалтад харуулах гишүүний тоо. Backend дээд хязгаар 100. */
+const TOP_LIMITS: FilterOption[] = [
+  { value: '10', label: 'Дээд 10' },
+  { value: '25', label: 'Дээд 25' },
+  { value: '50', label: 'Дээд 50' },
+  { value: '100', label: 'Дээд 100' },
+];
+
 export default function ReportsPage() {
   const [period, setPeriod] = useState<(typeof PERIODS)[number]['key']>('30');
   // 3 сараас урт хугацаанд өдрөөр бүлэглэвэл цэг хэт олон болно.
@@ -103,8 +112,16 @@ export default function ReportsPage() {
   const { data: members, loading: memLoading } = useApi<Members>(
     `/reports/members${q}`,
   );
+  /*
+   * Жагсаалтын урт — ажилтан сонгоно.
+   *
+   * Дээд 10 нь бага зааланд хангалттай боловч сарын тайланд
+   * илүү өргөн зураг хэрэгтэй болдог. CSV нь харагдаж байгаа
+   * мөрүүдийг татдаг тул энэ нь татах хэмжээг ч тодорхойлно.
+   */
+  const [topLimit, setTopLimit] = useState('10');
   const { data: top, loading: topLoading } = useApi<TopMembers>(
-    `/reports/top-members${q}`,
+    `/reports/top-members${q}${q.includes('?') ? '&' : '?'}limit=${topLimit}`,
   );
 
   const peakHour = useMemo(() => {
@@ -397,7 +414,16 @@ export default function ReportsPage() {
       {/* ── Хамгийн идэвхтэй гишүүд ── */}
       <ChartCard
         title="Хамгийн идэвхтэй гишүүд"
-        description="Сонгосон хугацаанд хамгийн олон ирсэн"
+        description="Сонгосон хугацаанд хамгийн олон ирсэн · ажилтны ирц орохгүй"
+        action={
+          <FilterSelect
+            value={topLimit}
+            onChange={setTopLimit}
+            options={TOP_LIMITS}
+            placeholder="Хэдийг"
+            className="w-28"
+          />
+        }
         filename={`идэвхтэй-гишүүд-${period}`}
         headers={['№', 'Нэр', 'Ирц', 'Сүүлд ирсэн']}
         rows={(top?.items ?? []).map((m) => [

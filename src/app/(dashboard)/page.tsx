@@ -17,6 +17,7 @@ import { LinkButton } from "@/components/link-button";
 import { AwaitingApprovalCard } from "@/components/awaiting-approval-card";
 import { PageHeader } from "@/components/page-header";
 import { StatCard } from "@/components/stat-card";
+import { TerminalQuickActions } from "@/components/terminal-quick-actions";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -655,36 +656,7 @@ export default function HomePage() {
       </div>
 
       {/* ── Терминал ── */}
-      {d.devices.length > 0 && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Терминал</CardTitle>
-          </CardHeader>
-          <CardContent className="flex flex-wrap gap-3">
-            {d.devices.map((dev) => (
-              <div
-                key={dev.id}
-                className="flex items-center gap-2.5 rounded-lg border px-3 py-2"
-              >
-                <span
-                  className={cn(
-                    "size-2 rounded-full",
-                    dev.online ? "bg-emerald-500" : "bg-muted-foreground/40",
-                  )}
-                />
-                <div>
-                  <p className="text-sm font-medium">{dev.name}</p>
-                  <p className="text-muted-foreground text-xs">
-                    {dev.online
-                      ? "Холбогдсон"
-                      : `Сүүлд ${relative(dev.lastSeenAt)}`}
-                  </p>
-                </div>
-              </div>
-            ))}
-          </CardContent>
-        </Card>
-      )}
+      {d.devices.length > 0 && <TerminalQuickActions devices={d.devices} />}
     </div>
   );
 }

@@ -32,6 +32,8 @@ import { GENDER_LABEL } from '@/components/gender-picker';
 import { ExtendDialog } from '@/components/extend-dialog';
 import { LinkButton } from '@/components/link-button';
 import { PageHeader } from '@/components/page-header';
+import { StaffLinkField } from '@/components/staff-link-field';
+import { CheckInDetail } from '@/components/check-in-detail';
 import { TerminalImage } from '@/components/terminal-image';
 import { DaysLeft, StatusBadge } from '@/components/status-badge';
 import {
@@ -44,6 +46,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -89,6 +92,8 @@ interface MemberDetail {
   loopyCardSerial: string | null;
   walletDevices: number | null;
   lastVisitAt: string | null;
+  /** Ажилтны данстай холбоос — байвал тайлангаас хасагдана. */
+  staffUser: { id: string; name: string; email: string; role: string } | null;
   createdAt: string;
 }
 
@@ -109,7 +114,17 @@ interface EventRow {
   eventAt: string;
   granted: boolean;
   reasonLabel: string;
+  verifyMode: string | null;
+  /** Уншуулах үеийн кадрын ЗАМ — терминал дээр. */
+  picturePath: string | null;
 }
+
+const VERIFY_LABEL: Record<string, string> = {
+  face: 'Царай',
+  card: 'Карт',
+  fp: 'Хурууны хээ',
+  pin: 'ПИН',
+};
 
 interface AuditRow {
   id: string;
@@ -162,6 +177,10 @@ export default function MemberDetailPage() {
   const [reason, setReason] = useState('');
   const [busy, setBusy] = useState(false);
   const [page, setPage] = useState(1);
+  const [evPage, setEvPage] = useState(1);
+  const [lkPage, setLkPage] = useState(1);
+  /** Дэлгэрэнгүй цонх нээх ирцийн ID. */
+  const [detailId, setDetailId] = useState<string | null>(null);
   const [syncing, setSyncing] = useState<'loopy' | 'device' | null>(null);
   const [returning, setReturning] = useState<string | null>(null);
 
@@ -169,7 +188,7 @@ export default function MemberDetailPage() {
     `/members/${id}/memberships?limit=10&page=${page}`,
   );
   const { data: events } = useApi<Page<EventRow>>(
-    `/access-events?memberId=${id}&limit=10`,
+    `/access-events?memberId=${id}&limit=10&page=${evPage}`,
   );
   // Энэ гишүүнд хийгдсэн ГАР үйлдлүүд. `can('manager')` шалгах шаардлагагүй:
   // эрхгүй бол backend 403 буцаах ба `useApi` алдааг чимээгүй барина.
@@ -177,7 +196,7 @@ export default function MemberDetailPage() {
     `/audit?entity=member&entityId=${id}&limit=10`,
   );
   const { data: lockers, reload: reloadLockers } = useApi<Page<LockerRow>>(
-    `/members/${id}/lockers?limit=10`,
+    `/members/${id}/lockers?limit=10&page=${lkPage}`,
   );
 
   async function runAction() {
@@ -270,6 +289,152 @@ export default function MemberDetailPage() {
     );
   }
   if (!m) return null;
+
+  /*
+    Ирц ба шүүгээний жагсаалт бас ХҮСНЭГТ — үндсэн дэлгэцүүдийнхтэй
+    ижил. Үүнээс өмнө эдгээр нь хавтгай `<ul>` байсан тул нэг хуудас дээр
+    хоёр өөр загвар зэрэг харагдаж, хуудаслалт ч байхгүй байв.
+  */
+  const evColumns: Column<EventRow>[] = [
+    {
+      key: 'shot',
+      header: '',
+      cell: (e) =>
+        e.picturePath ? (
+          <TerminalImage
+            path={e.picturePath}
+            alt="Уншуулах үеийн зураг"
+            className="size-10"
+          />
+        ) : null,
+      className: 'w-14',
+      hideOnMobile: true,
+    },
+    {
+      key: 'when',
+      header: 'Цаг',
+      cell: (e) => (
+        <span className="font-mono text-sm tabular-nums">
+          {dateTime(e.eventAt)}
+        </span>
+      ),
+      className: 'w-44',
+    },
+    {
+      key: 'reason',
+      header: 'Үр дүн',
+      cell: (e) => (
+        <Badge
+          variant="outline"
+          className={cn(
+            'font-normal',
+            e.granted
+              ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400'
+              : 'border-destructive/30 bg-destructive/10 text-destructive',
+          )}
+        >
+          {e.reasonLabel}
+        </Badge>
+      ),
+    },
+    {
+      key: 'verify',
+      header: 'Танилт',
+      cell: (e) => (
+        <span className="text-muted-foreground text-xs">
+          {e.verifyMode ? (VERIFY_LABEL[e.verifyMode] ?? e.verifyMode) : '—'}
+        </span>
+      ),
+      className: 'w-24 text-right',
+      hideOnMobile: true,
+    },
+  ];
+
+  const lkColumns: Column<LockerRow>[] = [
+    {
+      key: 'locker',
+      header: 'Шүүгээ',
+      cell: (l) => (
+        <div className="flex items-center gap-2">
+          <KeyRound
+            className={cn(
+              'size-4 shrink-0',
+              l.returnedAt
+                ? 'text-muted-foreground'
+                : l.overdue
+                  ? 'text-destructive'
+                  : 'text-emerald-500',
+            )}
+          />
+          <span className="text-sm font-medium">
+            {l.zone} №{l.number}
+          </span>
+        </div>
+      ),
+      className: 'w-40',
+    },
+    {
+      key: 'type',
+      header: 'Төрөл',
+      cell: (l) => (
+        <span className="text-muted-foreground text-xs">
+          {l.type === 'rental' ? 'Түрээс' : 'Өдрийн'}
+        </span>
+      ),
+      className: 'w-24',
+      hideOnMobile: true,
+    },
+    {
+      key: 'issued',
+      header: 'Олгосон',
+      cell: (l) => <span className="text-sm">{date(l.issuedAt)}</span>,
+      className: 'w-32',
+      hideOnMobile: true,
+    },
+    {
+      key: 'until',
+      header: 'Төлөв',
+      cell: (l) => (
+        <span
+          className={cn(
+            'text-sm',
+            !l.returnedAt && l.overdue && 'text-destructive',
+          )}
+        >
+          {l.returnedAt
+            ? `Буцаав ${date(l.returnedAt)}`
+            : l.dueAt
+              ? `${date(l.dueAt)} хүртэл`
+              : 'Гарсан хэвээр'}
+        </span>
+      ),
+    },
+    {
+      key: 'act',
+      header: '',
+      // Зөвхөн ГАРСАН хэвээр байгаа түлхүүрийг буцаана.
+      cell: (l) =>
+        l.returnedAt ? null : (
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={(ev) => {
+              ev.stopPropagation();
+              returnLocker(l);
+            }}
+            disabled={returning === l.id}
+          >
+            {returning === l.id ? (
+              <Loader2 className="size-3.5 animate-spin" />
+            ) : (
+              <Undo2 className="size-3.5" />
+            )}
+            Буцаах
+          </Button>
+        ),
+      className: 'w-28 text-right',
+    },
+  ];
 
   const msColumns: Column<MembershipRow>[] = [
     { key: 'date', header: 'Огноо', cell: (r) => date(r.createdAt) },
@@ -483,6 +648,19 @@ export default function MemberDetailPage() {
             </Field>
             <Field label="Сүүлд синк">{dateTime(m.hikSyncedAt)}</Field>
             <Field label="Сүүлд ирсэн">{relative(m.lastVisitAt)}</Field>
+
+            {/*
+              Ажилтан уу — терминал өөрөө ялгадаггүй тул энд тэмдэглэнэ.
+              Терминалын картан дотор байрлуулсан нь санамсаргүй биш:
+              асуулт нь үргэлж «энэ уншуулалт хэн бэ» гэснээс эхэлдэг.
+            */}
+            <div className="border-t pt-3">
+              <StaffLinkField
+                memberId={m.id}
+                current={m.staffUser}
+                onChange={reload}
+              />
+            </div>
           </CardContent>
         </Card>
 
@@ -590,91 +768,29 @@ export default function MemberDetailPage() {
         </TabsContent>
 
         <TabsContent value="visits" className="mt-4">
-          <Card className="py-0">
-            <CardContent className="p-0">
-              {events?.items.length ? (
-                <ul className="divide-border divide-y">
-                  {events.items.map((e) => (
-                    <li key={e.id} className="flex items-center gap-3 px-4 py-2.5">
-                      <span
-                        className={cn(
-                          'size-1.5 rounded-full',
-                          e.granted ? 'bg-emerald-500' : 'bg-red-500',
-                        )}
-                      />
-                      <span className="flex-1 text-sm">{dateTime(e.eventAt)}</span>
-                      <span className="text-muted-foreground text-xs">
-                        {e.reasonLabel}
-                      </span>
-                    </li>
-                  ))}
-                </ul>
-              ) : (
-                <p className="text-muted-foreground py-10 text-center text-sm">
-                  Ирц алга
-                </p>
-              )}
-            </CardContent>
-          </Card>
+          {/*
+            Мөрийг дарвал дэлгэрэнгүй — ирцийн дэлгэцтэй ижил цонх.
+            Жижиг кадрыг томруулж харах, түүхий өгөгдлийг үзэх зэрэг
+            маргаан шийдэх ажил энэ дэлгэцээс эхэлдэг.
+          */}
+          <DataTable
+            data={events}
+            columns={evColumns}
+            rowKey={(r) => r.id}
+            onRowClick={(r) => setDetailId(r.id)}
+            emptyText="Ирц алга"
+            onPageChange={setEvPage}
+          />
         </TabsContent>
 
         <TabsContent value="lockers" className="mt-4">
-          <Card className="py-0">
-            <CardContent className="p-0">
-              {lockers?.items.length ? (
-                <ul className="divide-border divide-y">
-                  {lockers.items.map((l) => (
-                    <li key={l.id} className="flex items-center gap-3 px-4 py-2.5">
-                      <KeyRound
-                        className={cn(
-                          'size-4',
-                          l.returnedAt
-                            ? 'text-muted-foreground'
-                            : l.overdue
-                              ? 'text-destructive'
-                              : 'text-emerald-500',
-                        )}
-                      />
-                      <span className="text-sm font-medium">
-                        {l.zone} №{l.number}
-                      </span>
-                      <span className="text-muted-foreground text-xs">
-                        {l.type === 'rental' ? 'Түрээс' : 'Өдрийн'}
-                      </span>
-                      <span className="flex-1" />
-                      <span className="text-muted-foreground text-xs">
-                        {l.returnedAt
-                          ? `Буцаав ${date(l.returnedAt)}`
-                          : l.dueAt
-                            ? `${date(l.dueAt)} хүртэл`
-                            : 'Гарсан хэвээр'}
-                      </span>
-                      {/* Зөвхөн ГАРСАН хэвээр байгаа түлхүүрийг буцаана. */}
-                      {!l.returnedAt && (
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => returnLocker(l)}
-                          disabled={returning === l.id}
-                        >
-                          {returning === l.id ? (
-                            <Loader2 className="size-3.5 animate-spin" />
-                          ) : (
-                            <Undo2 className="size-3.5" />
-                          )}
-                          Буцаах
-                        </Button>
-                      )}
-                    </li>
-                  ))}
-                </ul>
-              ) : (
-                <p className="text-muted-foreground py-10 text-center text-sm">
-                  Шүүгээний бүртгэл алга
-                </p>
-              )}
-            </CardContent>
-          </Card>
+          <DataTable
+            data={lockers}
+            columns={lkColumns}
+            rowKey={(r) => r.id}
+            emptyText="Шүүгээний бүртгэл алга"
+            onPageChange={setLkPage}
+          />
         </TabsContent>
 
         <TabsContent value="audit" className="mt-4">
@@ -715,6 +831,8 @@ export default function MemberDetailPage() {
           </Card>
         </TabsContent>
       </Tabs>
+
+      <CheckInDetail id={detailId} onClose={() => setDetailId(null)} />
 
       <ExtendDialog
         memberId={m.id}

@@ -30,6 +30,7 @@ export function ChartCard({
   loading,
   empty = 'Өгөгдөл алга',
   className,
+  action,
   children,
 }: {
   title: string;
@@ -40,6 +41,14 @@ export function ChartCard({
   loading?: boolean;
   empty?: string;
   className?: string;
+  /**
+   * Толгойд нэмэх хяналт — CSV товчны зүүн талд.
+   *
+   * Жишээ: «хэдийг харуулах» сонголт. Картын БИЕНД
+   * тавивал өгөгдлийн хэсэг мэт харагдаж, CSV-д орох эсэх
+   * нь ойлгомжгүй болно.
+   */
+  action?: ReactNode;
   children: ReactNode;
 }) {
   const has = rows.length > 0;
@@ -48,7 +57,8 @@ export function ChartCard({
       <CardHeader>
         <CardTitle className="text-sm">{title}</CardTitle>
         {description && <CardDescription>{description}</CardDescription>}
-        <CardAction>
+        <CardAction className="flex items-center gap-1.5">
+          {action}
           <Button
             size="sm"
             variant="ghost"
