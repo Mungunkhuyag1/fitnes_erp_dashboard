@@ -21,6 +21,11 @@ const LEAF: Record<string, string> = {
   freeze: 'Чөлөө',
   mail: 'Мэдэгдэл',
   connections: 'Холболт',
+  // Холболтын дэд хуудсууд.
+  terminal: 'Терминал',
+  loopy: 'Loopy карт',
+  gift: 'Бэлгийн карт',
+  facebook: 'Facebook',
   'staff-users': 'Ажилтан',
   diagnose: 'Оношилгоо',
 };

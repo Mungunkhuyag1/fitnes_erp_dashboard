@@ -4,12 +4,15 @@ import {
   Bell,
   Building2,
   CalendarOff,
+  Gift,
   KeyRound,
   Mail,
-  Plug,
+  MessageSquare,
+  MonitorSmartphone,
   ShieldCheck,
   User,
   Users,
+  Wallet,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import Link from 'next/link';
@@ -52,7 +55,43 @@ const SECTIONS: { label: string; items: Section[] }[] = [
       { href: '/settings/staff-users', label: 'Ажилтан', icon: Users, min: 'admin' },
       { href: '/settings/freeze', label: 'Чөлөө', icon: CalendarOff, min: 'admin' },
       { href: '/settings/mail', label: 'Мэдэгдэл', icon: Mail, min: 'admin' },
-      { href: '/settings/connections', label: 'Холболт', icon: Plug, min: 'admin' },
+    ],
+  },
+  {
+    /*
+      ГАДААД ХОЛБОЛТ — ТУСДАА БҮЛЭГ.
+
+      Урьд нь бүгд НЭГ хуудсанд байсан. Facebook нэмэгдэхэд
+      таван карт болж, гүйлгэхгүйгээр юу ч олдохгүй болсон. Мөн
+      тэдгээр нь ӨӨР ӨӨР системүүд — нэг дээр нь ажиллахад
+      бусдын төлөв анхаарлыг сарниулна.
+    */
+    label: 'Холболт',
+    items: [
+      {
+        href: '/settings/connections/terminal',
+        label: 'Терминал',
+        icon: MonitorSmartphone,
+        min: 'admin',
+      },
+      {
+        href: '/settings/connections/loopy',
+        label: 'Loopy карт',
+        icon: Wallet,
+        min: 'admin',
+      },
+      {
+        href: '/settings/connections/gift',
+        label: 'Бэлгийн карт',
+        icon: Gift,
+        min: 'admin',
+      },
+      {
+        href: '/settings/connections/facebook',
+        label: 'Facebook',
+        icon: MessageSquare,
+        min: 'admin',
+      },
     ],
   },
 ];
