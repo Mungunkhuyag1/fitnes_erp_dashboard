@@ -27,6 +27,7 @@ import {
   CardStageHint,
   type CardStage,
 } from '@/components/card-stage';
+import { AccessResult } from '@/components/access-result';
 import { DataTable, type Column } from '@/components/data-table';
 import { GENDER_LABEL } from '@/components/gender-picker';
 import { ExtendDialog } from '@/components/extend-dialog';
@@ -47,7 +48,6 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -115,6 +115,8 @@ interface EventRow {
   id: string;
   eventAt: string;
   granted: boolean;
+  /** Түүхий түлхүүр — терминал ↔ WinFit зөрүүг илрүүлэхэд. */
+  reason: string;
   reasonLabel: string;
   verifyMode: string | null;
   /** Уншуулах үеийн кадрын ЗАМ — терминал дээр. */
@@ -335,17 +337,11 @@ export default function MemberDetailPage() {
       key: 'reason',
       header: 'Үр дүн',
       cell: (e) => (
-        <Badge
-          variant="outline"
-          className={cn(
-            'font-normal',
-            e.granted
-              ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400'
-              : 'border-destructive/30 bg-destructive/10 text-destructive',
-          )}
-        >
-          {e.reasonLabel}
-        </Badge>
+        <AccessResult
+          granted={e.granted}
+          reason={e.reason}
+          reasonLabel={e.reasonLabel}
+        />
       ),
     },
     {

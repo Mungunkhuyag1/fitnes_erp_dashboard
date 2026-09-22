@@ -3,6 +3,7 @@
 import { ArrowRight, UserX } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
+import { AccessResult } from '@/components/access-result';
 import { TerminalImage } from '@/components/terminal-image';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -15,7 +16,6 @@ import {
 import { Skeleton } from '@/components/ui/skeleton';
 import { useApi } from '@/hooks/use-api';
 import { dateTime } from '@/lib/format';
-import { cn } from '@/lib/utils';
 
 const VERIFY_LABEL: Record<string, string> = {
   face: 'Царай',
@@ -36,6 +36,7 @@ interface Detail {
   id: string;
   eventAt: string;
   granted: boolean;
+  reason: string;
   reasonLabel: string;
   verifyMode: string | null;
   picturePath: string | null;
@@ -141,17 +142,12 @@ export function CheckInDetail({
                 </span>
               </Row>
               <Row label="Үр дүн">
-                <Badge
-                  variant="outline"
-                  className={cn(
-                    'font-normal',
-                    data.granted
-                      ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400'
-                      : 'border-destructive/30 bg-destructive/10 text-destructive',
-                  )}
-                >
-                  {data.reasonLabel}
-                </Badge>
+                <AccessResult
+                  granted={data.granted}
+                  reason={data.reason}
+                  reasonLabel={data.reasonLabel}
+                  className="items-end"
+                />
               </Row>
               <Row label="Танилт">
                 {data.verifyMode

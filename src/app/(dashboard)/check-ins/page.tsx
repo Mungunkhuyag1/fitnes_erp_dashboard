@@ -17,10 +17,10 @@ import { CheckInDetail } from '@/components/check-in-detail';
 import { DataTable, type Column } from '@/components/data-table';
 import { EmptyState } from '@/components/empty-state';
 import { FilterSelect, type FilterOption } from '@/components/filter-select';
+import { AccessResult } from '@/components/access-result';
 import { PageHeader } from '@/components/page-header';
 import { TerminalImage } from '@/components/terminal-image';
 import { StatCard } from '@/components/stat-card';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useApi } from '@/hooks/use-api';
@@ -45,6 +45,8 @@ interface EventRow {
   memberNo: string | null;
   eventAt: string;
   granted: boolean;
+  /** Түүхий түлхүүр (`ok`, `expired`…) — зөрүүг илрүүлэхэд. */
+  reason: string;
   reasonLabel: string;
   verifyMode: string | null;
   /** Уншуулах үеийн зургийн ЗАМ — терминал дээр байдаг. */
@@ -81,18 +83,26 @@ const RANGE_OPTIONS: FilterOption[] = RANGES.map((r) => ({
 }));
 
 const RESULT_OPTIONS: FilterOption[] = [
-  { value: '', label: 'Бүх үр дүн' },
+  { value: '', label: 'Хаалга — бүгд' },
   { value: 'true', label: 'Зөвшөөрсөн', dot: 'bg-emerald-500' },
   { value: 'false', label: 'Татгалзсан', dot: 'bg-destructive' },
 ];
 
 /**
- * Шалтгааны шошго нь backend-ийн `REASON_LABEL`-тай тохирох ёстой
- * (`access.service.ts`). Энд зөвхөн ТАТГАЛЗСАН шалтгаанууд — «Зөвшөөрөв»
- * нь үр дүнгийн шүүлтүүрт харьяалагдана.
+ * Шалтгаан — WinFit ГИШҮҮНЧЛЭЛИЙГ ЯМАР ГЭЖ ҮЗЭЖ БАЙГАА.
+ *
+ * ⚠ ТЕРМИНАЛЫН ШИЙДВЭРТЭЙ АДИЛГҮЙ. Төхөөрөмж өөрийн
+ * хүчинтэй хугацаагаар хаалга нээх эсэхийг шийддэг — тэр нь
+ * «Үр дүн» шүүлтүүр. Хоёр нь зөрөх боломжтой бөгөөд зөрөх
+ * нь ӨӨРӨӨ МЭДЭЭЛЭЛ: терминал дээрх хугацаа шинэчлэгдээгүй
+ * гэсэн үг (`AccessResult` шаргалаар заана).
+ *
+ * Шошго нь backend-ийн `REASON_LABEL`-тай тохирох ёстой
+ * (`access.service.ts`).
  */
 const REASON_OPTIONS: FilterOption[] = [
-  { value: '', label: 'Бүх шалтгаан' },
+  { value: '', label: 'Төлөв — бүгд' },
+  { value: 'ok', label: 'Эрхтэй' },
   { value: 'expired', label: 'Хугацаа дууссан' },
   { value: 'suspended', label: 'Түр зогссон' },
   { value: 'no_match', label: 'Танигдсангүй' },
@@ -271,17 +281,11 @@ export default function CheckInsPage() {
       header: 'Үр дүн',
       sortKey: 'reason',
       cell: (e) => (
-        <Badge
-          variant="outline"
-          className={cn(
-            'font-normal',
-            e.granted
-              ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400'
-              : 'border-destructive/30 bg-destructive/10 text-destructive',
-          )}
-        >
-          {e.reasonLabel}
-        </Badge>
+        <AccessResult
+          granted={e.granted}
+          reason={e.reason}
+          reasonLabel={e.reasonLabel}
+        />
       ),
       className: 'w-44',
     },
@@ -390,13 +394,13 @@ export default function CheckInsPage() {
           value={result}
           onChange={(v) => setFilter(() => setResult(v))}
           options={RESULT_OPTIONS}
-          placeholder="Үр дүн"
+          placeholder="Хаалга"
         />
         <FilterSelect
           value={reason}
           onChange={(v) => setFilter(() => setReason(v))}
           options={REASON_OPTIONS}
-          placeholder="Шалтгаан"
+          placeholder="Эрхийн төлөв"
         />
 
         {live && (
