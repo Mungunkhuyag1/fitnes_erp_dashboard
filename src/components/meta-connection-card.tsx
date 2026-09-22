@@ -59,7 +59,7 @@ export function MetaConnectionCard() {
     setBusy(true);
     try {
       const r = await api.post<{ pageName: string }>('/meta/connect', {
-        pageId: pageId.trim(),
+        pageId: pageId.trim() || undefined,
         token: token.trim(),
         appSecret: appSecret.trim(),
         verifyToken: verifyToken.trim(),
@@ -144,25 +144,40 @@ export function MetaConnectionCard() {
               ойлгохгүй — бүртгэл нь тэнд хийгддэг.
             */}
             <div className="bg-muted/40 space-y-2 rounded-lg p-3 text-xs">
-              <p className="font-medium">Meta-гийн талд хийх дараалал</p>
+              <p className="font-medium">Дараалал</p>
+              {/*
+                ⚠ ДАРААЛАЛ ЧУХАЛ. Meta-гийн «Verify and Save» нь
+                WinFit-ийн САНД хадгалсан баталгаажуулах үгийг асуудаг.
+                Тиймээс энд ЭХЛЭЭД хадгалах ёстой — эс бөгөөс Meta
+                татгалзаж, шалтгаан нь ойлгомжгүй байна.
+              */}
               <ol className="text-muted-foreground list-decimal space-y-1 pl-4">
                 <li>
-                  developers.facebook.com дээр апп үүсгэж <b>Messenger</b>{' '}
+                  developers.facebook.com → апп үүсгээд <b>Messenger</b>{' '}
                   бүтээгдэхүүнийг нэмнэ
                 </li>
-                <li>Хуудсаа тэр апптай холбож, Page access token үүсгэнэ</li>
                 <li>
-                  Webhook хаягт доорхыг тавьж, өөрийн сонгосон
-                  баталгаажуулах үгийг бичнэ
+                  Messenger → Settings → хуудсаа холбож{' '}
+                  <b>Page access token</b> үүсгэнэ (нэг л удаа харагдана)
                 </li>
                 <li>
-                  <b>messages</b>, <b>message_echoes</b> хоёрыг заавал
-                  захиална — хоёрдахьгүй бол утаснаас бичсэн хариу WinFit-д
-                  харагдахгүй
+                  App Settings → Basic → <b>App Secret</b> хуулна
+                </li>
+                <li className="text-foreground font-medium">
+                  Доорх маягтыг бөглөөд ЭНД ХАДГАЛНА
                 </li>
                 <li>
-                  App Review хүртэл зөвхөн аппын админ/тестерүүд мессеж
-                  бичиж чадна
+                  Дараа нь Meta → Webhooks → Callback URL болгож доорх
+                  хаягыг, Verify Token болгож энд бичсэн үгээ тавьж{' '}
+                  <b>Verify and Save</b>
+                </li>
+                <li>
+                  Захиалах: <b>messages</b>, <b>message_echoes</b> —
+                  хоёрдахьгүй бол утаснаас бичсэн хариу энд харагдахгүй
+                </li>
+                <li>
+                  Туршихад <b>аппын админы</b> Facebook хаягаас бичнэ —
+                  App Review хүртэл бусад хүн бичиж чадахгүй
                 </li>
               </ol>
 
@@ -181,7 +196,10 @@ export function MetaConnectionCard() {
             </div>
 
             <div className="grid gap-3 sm:grid-cols-2">
-              <Field label="Page ID">
+              <Field
+                label="Page ID (заавал биш)"
+                hint="Хоосон орхивол токенээс нь авна"
+              >
                 <Input
                   value={pageId}
                   onChange={(e) => setPageId(e.target.value)}
@@ -225,7 +243,6 @@ export function MetaConnectionCard() {
               onClick={connect}
               disabled={
                 busy ||
-                !pageId.trim() ||
                 !token.trim() ||
                 !appSecret.trim() ||
                 !verifyToken.trim()
