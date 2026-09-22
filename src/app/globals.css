@@ -137,3 +137,36 @@
     @apply font-sans;
   }
 }
+/*
+ * Мэндчилгээний гар — толгойн мөрөнд.
+ *
+ * Ашиглах үед нэг удаа дохиод тайвшрана — тасралтгүй хөдөлгөөн
+ * ажилтны нүдийг өдөржин татах болно.
+ */
+@keyframes winfit-wave {
+  0%,
+  60%,
+  100% {
+    transform: rotate(0deg);
+  }
+  10%,
+  30% {
+    transform: rotate(14deg);
+  }
+  20%,
+  40% {
+    transform: rotate(-8deg);
+  }
+}
+
+.animate-wave {
+  transform-origin: 70% 70%;
+  animation: winfit-wave 2.4s ease-in-out infinite;
+}
+
+/* Хөдөлгөөн багасгах тохиргоотой хүнд — хөдөлгөөнгүй. */
+@media (prefers-reduced-motion: reduce) {
+  .animate-wave {
+    animation: none;
+  }
+}

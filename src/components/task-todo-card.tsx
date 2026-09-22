@@ -1,12 +1,13 @@
 'use client';
 
-import { CalendarCheck, CheckCircle2 } from 'lucide-react';
+import { CalendarCheck, CheckCircle2, Plus } from 'lucide-react';
 import { useState } from 'react';
 import { toast } from 'sonner';
 import { LinkButton } from '@/components/link-button';
 import { TaskDialog, type TaskRule } from '@/components/task-dialog';
 import { TaskList, type TaskOccurrence } from '@/components/task-list';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import {
   Card,
   CardAction,
@@ -63,7 +64,13 @@ export function TaskTodoCard({
   reload: () => void;
 }) {
   const { can } = useAuth();
-  const [task, setTask] = useState<TaskRule | null>(null);
+  /*
+    Цонхны төлөв — `task: null` нь ШИНЭ ажил гэсэн утгатай тул
+    өөрөө нь «нээх эсэх»-ийг хэлж чадахгүй. Тиймээс хоёр талбар.
+  */
+  const [dialog, setDialog] = useState<{ open: boolean; task: TaskRule | null }>(
+    { open: false, task: null },
+  );
 
   /*
    * Дэлгэрэнгүй рүү ороход ДҮРЭМИЙГ татна.
@@ -75,7 +82,7 @@ export function TaskTodoCard({
     try {
       const rules = await api.get<TaskRule[]>('/tasks?all=true');
       const t = rules.find((r) => r.id === taskId);
-      if (t) setTask(t);
+      if (t) setDialog({ open: true, task: t });
     } catch (e) {
       toast.error(e instanceof Error ? e.message : 'Ажлын мэдээлэл татагдсангүй');
     }
@@ -92,7 +99,14 @@ export function TaskTodoCard({
   const total = (data?.items.length ?? 0) + (data?.overdue.length ?? 0);
 
   return (
-    <Card>
+    /*
+      ⚠ «Анхаарах зүйлс»-тэй ИЖИЛ ӨНДӨРТЭЙ.
+
+      `h-full` нь торын мөрийн өндрөөр сунана, `max-h` нь хоёуланг
+      нь нэг дээд хязгаарт барина. Үүнгүй бол ажил цөөхөн үед зүүн
+      карт богино байж, мөр тэгш бус харагдана.
+    */
+    <Card className="flex h-full max-h-[26rem] flex-col">
       {/*
         ⚠ `CardHeader` нь GRID (`grid-cols-[1fr_auto]` нь `data-slot=card-action`
         байхад л асана). `flex-row justify-between` гэж бичихэд
@@ -109,14 +123,25 @@ export function TaskTodoCard({
             </Badge>
           )}
         </CardTitle>
-        <CardAction>
+        <CardAction className="flex items-center gap-1">
+          {/* Ажлыг НҮҮРЭЭС шууд нэмнэ — календарь руу шилжих шаардлагагүй. */}
+          {can('manager') && (
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => setDialog({ open: true, task: null })}
+            >
+              <Plus className="size-4" />
+              Нэмэх
+            </Button>
+          )}
           <LinkButton size="sm" variant="ghost" href="/tasks">
             Календарь
           </LinkButton>
         </CardAction>
       </CardHeader>
 
-      <CardContent>
+      <CardContent className="min-h-0 flex-1 overflow-y-auto">
         {loading && !data ? (
           <div className="space-y-2">
             {[0, 1, 2].map((i) => (
@@ -183,11 +208,11 @@ export function TaskTodoCard({
       </CardContent>
 
       <TaskDialog
-        key={task?.id ?? 'none'}
-        open={task !== null}
-        task={task}
+        key={`${dialog.open}-${dialog.task?.id ?? 'new'}`}
+        open={dialog.open}
+        task={dialog.task}
         defaultDay={data?.today ?? ''}
-        onClose={() => setTask(null)}
+        onClose={() => setDialog({ open: false, task: null })}
         onSaved={reload}
       />
     </Card>

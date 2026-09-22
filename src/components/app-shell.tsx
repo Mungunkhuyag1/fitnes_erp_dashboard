@@ -317,8 +317,22 @@ function SiteHeader() {
         />
         <div className="min-w-0 flex-1">
           {home ? (
-            <p className="truncate text-sm font-medium">
-              Сайн байна уу, {user?.name?.split(' ')[0] ?? ''} 👋
+            /*
+              Нэрийг ТОДРУУЛНА, мэндчилгээг бүдэгрүүлнэ — нүд ямар
+              мэдээлэл дээр зогсохыг заана. Гар нь дохино — хааяа
+              тайвширдаг, тасралтгүй хөдөлгөөн ажлын өдрөөр байвал
+              сандраана (`prefers-reduced-motion` дээр бүрэн зогсоно).
+            */
+            <p className="flex min-w-0 items-center gap-1.5 text-sm">
+              <span className="text-muted-foreground hidden sm:inline">
+                Сайн байна уу,
+              </span>
+              <span className="truncate font-semibold">
+                {user?.name?.split(' ')[0] ?? ''}
+              </span>
+              <span className="animate-wave inline-block" aria-hidden>
+                👋
+              </span>
             </p>
           ) : (
             <Breadcrumb />

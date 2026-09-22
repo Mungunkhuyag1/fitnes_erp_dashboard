@@ -330,7 +330,8 @@ export default function HomePage() {
         </div>
 
           {/* ── Анхаарах зүйлс ── */}
-          <Card className="flex max-h-[26rem] flex-col">
+          {/* `h-full` — зүүн картаа дагаж мөр тэгш байхын тулд. */}
+          <Card className="flex h-full max-h-[26rem] flex-col">
             <CardHeader>
               <CardTitle className="text-base">Анхаарах зүйлс</CardTitle>
               {attention.length > 0 && (
