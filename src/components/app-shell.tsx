@@ -19,6 +19,7 @@ import { usePathname } from 'next/navigation';
 import type { ReactNode } from 'react';
 import { NAV } from '@/components/app-nav';
 import { Breadcrumb } from '@/components/breadcrumb';
+import { ChatWidget } from '@/components/chat-widget';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -144,25 +145,12 @@ function NavUser() {
   );
 }
 
-function AppSidebar() {
+function AppSidebar({ unread }: { unread: number }) {
   const pathname = usePathname();
   const { user } = useAuth();
   const settingsActive = pathname.startsWith('/settings');
 
-  /*
-    Чатын уншаагүй тоо — 30 секунд тутам.
 
-    ⚠ ХӨНГӨН ДУУДЛАГА байх ёстой: цэс бүх дэлгэц дээр байдаг тул
-    энэ нь системийн хамгийн ойр давтагддаг хүсэлт болно. Backend дээр
-    энэ нь ганц `SUM(unread)` — яриануудыг татахгүй.
-
-    Алдаа гарвал (хуудас холбогдоогүй) `useApi` чимээгүй барна —
-    тэмдэг зүгээр л гарахгүй.
-  */
-  const { data: inbox } = useApi<{ total: number }>('/meta/unread', {
-    refreshMs: 30_000,
-  });
-  const unread = inbox?.total ?? 0;
 
   return (
     // `collapsible="icon"` — хураахад цэс АЛГА БОЛОХГҮЙ, зөвхөн икон
@@ -389,6 +377,20 @@ function SiteHeader() {
 }
 
 export function AppShell({ children }: { children: ReactNode }) {
+  /*
+    Чатын уншаагүй тоо — 30 секунд тутам, НЭГ Л УДАА.
+
+    ⚠ Цэс ба хөвөгч цонх ХОЁУЛАНГ нь энэ тоог хэрэглэнэ.
+    Тусдаа татвал нэг хуудсанд хоёр ижил хүсэлт явна — энэ нь
+    системийн хамгийн ойр давтагддаг дуудлага.
+
+    Алдаа гарвал (хуудас холбогдоогүй) `useApi` чимээгүй барна.
+  */
+  const { data: inbox } = useApi<{ total: number }>('/meta/unread', {
+    refreshMs: 30_000,
+  });
+  const unread = inbox?.total ?? 0;
+
   return (
     // `h-svh` — `SidebarProvider` нь `min-h-svh` тул хуудас бүхэлдээ гүйдэг
     // байсан. Тэр үед ирмэг дэх товчны `top-1/2` нь ДЭЛГЭЦИЙН биш
@@ -403,7 +405,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         } as React.CSSProperties
       }
     >
-      <AppSidebar />
+      <AppSidebar unread={unread} />
       <SidebarInset className="relative min-h-0">
         <EdgeToggle />
         <SiteHeader />
@@ -413,6 +415,15 @@ export function AppShell({ children }: { children: ReactNode }) {
         <main className="min-h-0 min-w-0 flex-1 overflow-y-auto p-4 lg:p-6">
           {children}
         </main>
+
+        {/*
+          Хөвөгч чат — `main`-аас ГАДНА.
+
+          Дотор нь тавьвал агуулгатай хамт гүйж, баруун доод буландаа
+          тогтохгүй. `AppShell` дотор байрлах нь мөн хуудас солиход
+          цонх дахин үүсэхгүй — бичиж эхэлсэн хариу алдагдахгүй.
+        */}
+        <ChatWidget unread={unread} />
       </SidebarInset>
     </SidebarProvider>
   );

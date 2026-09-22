@@ -7,7 +7,6 @@ import {
   MessageSquare,
   Send,
   UserPlus,
-  UserRound,
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
@@ -15,6 +14,14 @@ import { toast } from 'sonner';
 import { LinkButton } from '@/components/link-button';
 import { MemberPicker } from '@/components/member-picker';
 import { PageHeader } from '@/components/page-header';
+import {
+  ChatAvatar,
+  ChatBubble,
+  WINDOW_NOTE,
+  type ChatStatus,
+  type Conversation,
+  type Message,
+} from '@/components/chat-parts';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -22,54 +29,8 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Textarea } from '@/components/ui/textarea';
 import { useApi } from '@/hooks/use-api';
 import { api } from '@/lib/api';
-import { dateTime, relative } from '@/lib/format';
+import { relative } from '@/lib/format';
 import { cn } from '@/lib/utils';
-
-interface Member {
-  id: string;
-  name: string;
-  memberNo: string;
-  status: string;
-}
-
-interface Conversation {
-  id: string;
-  psid: string;
-  name: string | null;
-  pictureUrl: string | null;
-  lastMessageAt: string | null;
-  lastMessageText: string | null;
-  unread: number;
-  /** Хариу бичих боломж — backend-ийн тооцоолсон цонх. */
-  window: 'open' | 'agent' | 'closed';
-  member: Member | null;
-}
-
-interface Message {
-  id: string;
-  mid: string;
-  direction: 'in' | 'out';
-  text: string | null;
-  attachments: { type?: string; payload?: { url?: string } }[] | null;
-  error: string | null;
-  sentAt: string;
-}
-
-interface Status {
-  connected: boolean;
-  pageName: string | null;
-}
-
-/** Цонхны төлөв → ажилтанд хэлэх үг. */
-const WINDOW_NOTE: Record<Conversation['window'], string | null> = {
-  open: null,
-  agent:
-    '24 цаг өнгөрсөн — Facebook энэ хариуг «хүн гараар хариулж байна» ' +
-    'гэж тэмдэглэн илгээнэ. 7 хоногийн дотор л боломжтой.',
-  closed:
-    'Хариу бичих хугацаа дууссан. Facebook нь хэрэглэгч сүүлд бичсэнээс ' +
-    'хойш 7 хоногийн дараа хариулахыг зөвшөөрдөггүй.',
-};
 
 /**
  * Facebook Messenger-ийн хайрцаг.
@@ -92,7 +53,7 @@ export default function InboxPage() {
   const [sending, setSending] = useState(false);
   const [linking, setLinking] = useState(false);
 
-  const { data: status } = useApi<Status>('/meta/status');
+  const { data: status } = useApi<ChatStatus>('/meta/status');
 
   /*
    * 10 секунд тутам шинэчилнэ.
@@ -127,6 +88,23 @@ export default function InboxPage() {
       endRef.current?.scrollIntoView({ block: 'end' });
     }
   }, [thread?.messages.length]);
+
+  /*
+    НЭЭЛТТЭЙ ЯРИА ДЭЭР ШИНЭ МЕССЕЖ ИРВЭЛ ШУУД УНШСАН ГЭЖ ТЭМДЭГЛЭНЭ.
+
+    Үүнгүй бол ажилтан яриагаа шагайж байхад цэс ба бөмбөлөг дээрх
+    тоо өссөөр байна.
+  */
+  useEffect(() => {
+    const u = thread?.conversation.unread ?? 0;
+    if (!active || u === 0) return;
+    void api
+      .post(`/meta/conversations/${active}/read`, {})
+      .then(() => reload())
+      .catch(() => {
+        // Уншсан тэмдэглэгээ чухал биш.
+      });
+  }, [active, thread?.conversation.unread, reload]);
 
   async function open(c: Conversation) {
     setActive(c.id);
@@ -235,7 +213,7 @@ export default function InboxPage() {
                         active === x.id && 'bg-accent',
                       )}
                     >
-                      <Avatar name={x.name} url={x.pictureUrl} />
+                      <ChatAvatar name={x.name} url={x.pictureUrl} />
                       <div className="min-w-0 flex-1">
                         <div className="flex items-baseline gap-2">
                           <span
@@ -287,7 +265,7 @@ export default function InboxPage() {
               <div className="flex flex-col">
                 {/* Толгой — хэн болох, гишүүнтэй холбоос */}
                 <div className="flex flex-wrap items-center gap-3 border-b p-3">
-                  <Avatar name={c.name} url={c.pictureUrl} />
+                  <ChatAvatar name={c.name} url={c.pictureUrl} />
                   <div className="min-w-0">
                     <p className="truncate text-sm font-medium">
                       {c.name ?? 'Нэргүй'}
@@ -338,7 +316,7 @@ export default function InboxPage() {
                 {/* Мессежүүд */}
                 <div className="max-h-[22rem] space-y-2 overflow-y-auto p-3">
                   {thread.messages.map((m) => (
-                    <Bubble key={m.id} m={m} />
+                    <ChatBubble key={m.id} m={m} />
                   ))}
                   <div ref={endRef} />
                 </div>
@@ -403,81 +381,6 @@ export default function InboxPage() {
             )}
           </CardContent>
         </Card>
-      </div>
-    </div>
-  );
-}
-
-/** Профайл зураг — татагдаагүй бол эхний үсэг. */
-function Avatar({ name, url }: { name: string | null; url: string | null }) {
-  if (url) {
-    return (
-      // eslint-disable-next-line @next/next/no-img-element -- гадаад CDN
-      <img
-        src={url}
-        alt=""
-        className="size-8 shrink-0 rounded-full object-cover"
-      />
-    );
-  }
-  return (
-    <span className="bg-muted text-muted-foreground flex size-8 shrink-0 items-center justify-center rounded-full text-xs font-medium">
-      {name?.[0] ?? <UserRound className="size-4" />}
-    </span>
-  );
-}
-
-/** Нэг мессеж. Ирсэн нь зүүн, илгээсэн нь баруун талд. */
-function Bubble({ m }: { m: Message }) {
-  const out = m.direction === 'out';
-  return (
-    <div className={cn('flex', out ? 'justify-end' : 'justify-start')}>
-      <div
-        className={cn(
-          'max-w-[75%] rounded-lg px-3 py-2 text-sm',
-          m.error
-            ? 'border-destructive/40 text-destructive border'
-            : out
-              ? 'bg-primary text-primary-foreground'
-              : 'bg-muted',
-        )}
-      >
-        {m.text && <p className="whitespace-pre-wrap break-words">{m.text}</p>}
-
-        {/* Хавсралт — зургийг харуулж, бусдыг холбоосоор. */}
-        {m.attachments?.map((a, i) =>
-          a.payload?.url ? (
-            a.type === 'image' ? (
-              // eslint-disable-next-line @next/next/no-img-element -- гадаад CDN
-              <img
-                key={i}
-                src={a.payload.url}
-                alt=""
-                className="mt-1 max-h-48 rounded"
-              />
-            ) : (
-              <a
-                key={i}
-                href={a.payload.url}
-                target="_blank"
-                rel="noreferrer"
-                className="mt-1 block underline underline-offset-2"
-              >
-                {a.type ?? 'Хавсралт'}
-              </a>
-            )
-          ) : null,
-        )}
-
-        <p
-          className={cn(
-            'mt-1 text-[10px]',
-            out && !m.error ? 'text-primary-foreground/70' : 'text-muted-foreground',
-          )}
-        >
-          {dateTime(m.sentAt)}
-          {m.error && ` · Илгээгдсэнгүй: ${m.error}`}
-        </p>
       </div>
     </div>
   );
