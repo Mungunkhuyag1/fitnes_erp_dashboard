@@ -46,6 +46,7 @@ import {
   SidebarTrigger,
   useSidebar,
 } from '@/components/ui/sidebar';
+import { useApi } from '@/hooks/use-api';
 import { useAuth, type Role } from '@/lib/auth';
 import { cn } from '@/lib/utils';
 
@@ -148,6 +149,21 @@ function AppSidebar() {
   const { user } = useAuth();
   const settingsActive = pathname.startsWith('/settings');
 
+  /*
+    Чатын уншаагүй тоо — 30 секунд тутам.
+
+    ⚠ ХӨНГӨН ДУУДЛАГА байх ёстой: цэс бүх дэлгэц дээр байдаг тул
+    энэ нь системийн хамгийн ойр давтагддаг хүсэлт болно. Backend дээр
+    энэ нь ганц `SUM(unread)` — яриануудыг татахгүй.
+
+    Алдаа гарвал (хуудас холбогдоогүй) `useApi` чимээгүй барна —
+    тэмдэг зүгээр л гарахгүй.
+  */
+  const { data: inbox } = useApi<{ total: number }>('/meta/unread', {
+    refreshMs: 30_000,
+  });
+  const unread = inbox?.total ?? 0;
+
   return (
     // `collapsible="icon"` — хураахад цэс АЛГА БОЛОХГҮЙ, зөвхөн икон
     // болж нарийсна. (`offcanvas` бол бүхэлдээ шургадаг.)
@@ -213,6 +229,16 @@ function AppSidebar() {
                         >
                           <item.icon />
                           <span>{item.label}</span>
+                          {/*
+                            Уншаагүй мессежийн тэмдэг — зөвхөн чат дээр.
+                            Заагчгүй хайрцаг нь ажилтаныг «үе үе орж шалга»
+                            гэж шаардана — тэгвэл хүмүүс хариу хүлээсээр үлдэнэ.
+                          */}
+                          {item.href === '/inbox' && unread > 0 && (
+                            <span className="bg-primary text-primary-foreground ml-auto rounded-full px-1.5 py-0.5 text-[10px] leading-none font-medium tabular-nums">
+                              {unread > 99 ? '99+' : unread}
+                            </span>
+                          )}
                         </SidebarMenuButton>
                       </SidebarMenuItem>
                     );

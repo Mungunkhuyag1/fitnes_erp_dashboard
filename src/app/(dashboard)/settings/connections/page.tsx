@@ -12,6 +12,7 @@ import {
 } from "@/components/ui/card";
 import { GiftProgramCard } from "@/components/gift-program-card";
 import { LoopyProgramCard } from "@/components/loopy-program-card";
+import { MetaConnectionCard } from "@/components/meta-connection-card";
 import { TerminalConnectionCard } from "@/components/terminal-connection-card";
 import { api } from "@/lib/api";
 import { cn } from "@/lib/utils";
@@ -119,6 +120,8 @@ export default function ConnectionSettings() {
       <GiftProgramCard />
 
       <TerminalConnectionCard />
+
+      <MetaConnectionCard />
     </div>
   );
 }

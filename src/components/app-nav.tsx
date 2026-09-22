@@ -3,6 +3,7 @@
 import {
   BarChart3,
   CalendarCheck,
+  MessageSquare,
   DoorOpen,
   Gift,
   KeyRound,
@@ -48,6 +49,8 @@ export const NAV: NavGroup[] = [
       // Ажилтны ДОТООД даалгавар — гишүүдэд хамааралгүй тул
       // «Удирдлага» биш «Ажил» бүлэгт: өдөр тутам харах зүйл.
       { href: '/tasks', label: 'Ажлын төлөвлөгөө', icon: CalendarCheck },
+      // Facebook-ын чат — ресепшн хариулдаг тул эрхийн хязгааргүй.
+      { href: '/inbox', label: 'Чат', icon: MessageSquare },
       { href: '/terminal', label: 'Терминал', icon: MonitorSmartphone },
       { href: '/invoices', label: 'Төлбөр', icon: Receipt },
     ],
