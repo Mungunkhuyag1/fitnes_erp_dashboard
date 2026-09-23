@@ -49,7 +49,7 @@ export default function NewMemberPage() {
         emergencyPhone: emPhone || undefined,
       });
       toast.success(`№${created.memberNo} бүртгэгдлээ`, {
-        description: 'Дараа нь терминал дээр царайгаа уншуулна',
+        description: 'Одоо гишүүнийг терминал руу дуудаад царайг нь уншуулна',
       });
       router.replace(`/members/${created.id}`);
     } catch (err) {

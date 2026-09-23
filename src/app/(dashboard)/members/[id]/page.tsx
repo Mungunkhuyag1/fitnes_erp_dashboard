@@ -31,6 +31,7 @@ import { AccessResult } from '@/components/access-result';
 import { DataTable, type Column } from '@/components/data-table';
 import { GENDER_LABEL } from '@/components/gender-picker';
 import { ExtendDialog } from '@/components/extend-dialog';
+import { FaceEnrollBanner, FaceEnrollButton } from '@/components/face-enroll';
 import { LinkButton } from '@/components/link-button';
 import { PageHeader } from '@/components/page-header';
 import { RecordDialog } from '@/components/record-dialog';
@@ -529,6 +530,19 @@ export default function MemberDetailPage() {
         </div>
       )}
 
+      {/* ⚠ Царайгүй гишүүн хаалгаар ОРЖ ЧАДАХГҮЙ. Эрх сунгасан ч,
+          төлбөр төлсөн ч хамаагүй — терминал танихгүй. Тиймээс энэ нь
+          профайлын дээд хэсэгт, эрхийн төлөвийн зэрэгцээ байх ёстой. */}
+      {!m.faceEnrolled && m.status !== 'cancelled' && (
+        <FaceEnrollBanner
+          memberId={m.id}
+          name={m.name}
+          synced={!!m.hikSyncedAt}
+          syncFailed={!!m.syncError}
+          onDone={reload}
+        />
+      )}
+
       {m.syncError && (
         <div className="border-destructive/30 bg-destructive/8 flex items-start gap-3 rounded-lg border px-4 py-3">
           <AlertTriangle className="text-destructive mt-0.5 size-4 shrink-0" />
@@ -658,10 +672,26 @@ export default function MemberDetailPage() {
                 </span>
               ) : (
                 <span className="text-sky-600 dark:text-sky-400">
-                  Бүртгүүлээгүй — терминал дээр уншуулна
+                  Бүртгүүлээгүй
                 </span>
               )}
             </Field>
+
+            {/*
+              Царайг ДАХИН уншуулах нь бүртгэлтэй хүнд ч хэрэгтэй: хүн
+              нүдний шил зүүсэн, үс засуулсан, эсвэл терминал хуучин
+              зургаар нь таних нь муудсан байж болно. Дарвал хуучин нь
+              шинээр солигдоно.
+            */}
+            <FaceEnrollButton
+              memberId={m.id}
+              name={m.name}
+              synced={!!m.hikSyncedAt}
+              onDone={reload}
+              variant="outline"
+              size="sm"
+              label={m.faceEnrolled ? 'Царайг дахин уншуулах' : 'Царай уншуулах'}
+            />
             <Field label="Сүүлд синк">{dateTime(m.hikSyncedAt)}</Field>
             <Field label="Сүүлд ирсэн">{relative(m.lastVisitAt)}</Field>
 
