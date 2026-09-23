@@ -2,7 +2,7 @@
 
 import { CalendarCheck, CheckCircle2, Plus } from 'lucide-react';
 import { useState } from 'react';
-import { toast } from 'sonner';
+import { errorToast } from '@/lib/errors';
 import { LinkButton } from '@/components/link-button';
 import { TaskDialog, type TaskRule } from '@/components/task-dialog';
 import { TaskList, type TaskOccurrence } from '@/components/task-list';
@@ -84,7 +84,7 @@ export function TaskTodoCard({
       const t = rules.find((r) => r.id === taskId);
       if (t) setDialog({ open: true, task: t });
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'Ажлын мэдээлэл татагдсангүй');
+      errorToast(e, 'Ажлын мэдээлэл татагдсангүй');
     }
   }
 

@@ -3,6 +3,7 @@
 import { Loader2, Trash2 } from 'lucide-react';
 import { useState } from 'react';
 import { toast } from 'sonner';
+import { errorToast } from '@/lib/errors';
 import { FilterSelect, type FilterOption } from '@/components/filter-select';
 import { Button } from '@/components/ui/button';
 import {
@@ -148,7 +149,7 @@ export function TaskDialog({
       onSaved();
       onClose();
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'Алдаа гарлаа');
+      errorToast(e, 'Алдаа гарлаа');
     } finally {
       setSaving(false);
     }
@@ -164,7 +165,7 @@ export function TaskDialog({
       onSaved();
       onClose();
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'Алдаа гарлаа');
+      errorToast(e, 'Алдаа гарлаа');
     } finally {
       setSaving(false);
     }

@@ -2,7 +2,7 @@
 
 import { Loader2, Pencil, Repeat, UserRound } from 'lucide-react';
 import { useState } from 'react';
-import { toast } from 'sonner';
+import { errorToast } from '@/lib/errors';
 import { KIND_LABEL, type TaskKind } from '@/components/task-dialog';
 import { Checkbox } from '@/components/ui/checkbox';
 import { api } from '@/lib/api';
@@ -80,7 +80,7 @@ export function TaskList({
       else await api.post(`/tasks/${o.taskId}/complete`, { on: o.on });
       onChanged();
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'Алдаа гарлаа');
+      errorToast(e, 'Алдаа гарлаа');
     } finally {
       setBusy(null);
     }
@@ -96,7 +96,7 @@ export function TaskList({
       await api.patch(`/tasks/${o.taskId}`, { title });
       onChanged();
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'Алдаа гарлаа');
+      errorToast(e, 'Алдаа гарлаа');
     } finally {
       setBusy(null);
     }

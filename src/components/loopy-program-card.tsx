@@ -12,6 +12,7 @@ import {
 import QRCode from 'qrcode';
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
+import { errorToast } from '@/lib/errors';
 import { FilterSelect } from '@/components/filter-select';
 import {
   AlertDialog,
@@ -115,7 +116,7 @@ export function LoopyProgramCard() {
       reloadDiff();
       reloadSum();
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'Алдаа гарлаа');
+      errorToast(e, 'Алдаа гарлаа');
     } finally {
       setCleaning(false);
     }
@@ -140,7 +141,7 @@ export function LoopyProgramCard() {
       reload();
       reloadSum();
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'Алдаа гарлаа');
+      errorToast(e, 'Алдаа гарлаа');
     } finally {
       setSaving(false);
     }
@@ -151,7 +152,7 @@ export function LoopyProgramCard() {
       const r = await api.get<EnrollLink>('/loyalty/enroll-link');
       setLink(r);
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'Линк авч чадсангүй');
+      errorToast(e, 'Линк авч чадсангүй');
     }
   }
 

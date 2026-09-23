@@ -3,6 +3,7 @@
 import { Camera, Loader2, LogOut, Trash2 } from 'lucide-react';
 import { useRef, useState } from 'react';
 import { toast } from 'sonner';
+import { errorToast } from '@/lib/errors';
 import { Button } from '@/components/ui/button';
 import {
   Card,
@@ -90,7 +91,7 @@ function ProfileForm({
     try {
       setAvatar(await shrink(file));
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'Зураг боловсруулж чадсангүй');
+      errorToast(e, 'Зураг боловсруулж чадсангүй');
     }
   }
 
@@ -101,7 +102,7 @@ function ProfileForm({
       await onSaved();
       toast.success('Хадгаллаа');
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'Алдаа гарлаа');
+      errorToast(e, 'Алдаа гарлаа');
     } finally {
       setBusy(false);
     }

@@ -16,6 +16,17 @@ export class ApiError extends Error {
   constructor(
     readonly status: number,
     message: string,
+    /**
+     * Юу хийхийг зааж өгөх нэмэлт мөр.
+     *
+     * Backend нь зарим алдаанд `hint` дагуулж илгээдэг — ялангуяа
+     * терминалын холболт салсан үед («заалан дээрх компьютерээ
+     * шалгана уу»). Мессежтэй нийлүүлбэл toast хэт урт болно тул
+     * тусад нь, тайлбар мөр болгон харуулна.
+     */
+    readonly hint?: string,
+    /** `DeviceUnreachable` гэх мэт машины уншдаг ангилал. */
+    readonly code?: string,
   ) {
     super(message);
   }
@@ -130,14 +141,22 @@ async function request<T>(path: string, opts: RequestOptions = {}): Promise<T> {
 
   if (!res.ok) {
     let message = `Алдаа гарлаа (${res.status})`;
+    let hint: string | undefined;
+    let code: string | undefined;
     try {
-      const body = (await res.json()) as { message?: string | string[] };
+      const body = (await res.json()) as {
+        message?: string | string[];
+        hint?: string;
+        error?: string;
+      };
       if (Array.isArray(body.message)) message = body.message.join(', ');
       else if (body.message) message = body.message;
+      hint = body.hint;
+      code = body.error;
     } catch {
       /* JSON биш хариу — ерөнхий мессеж үлдээнэ */
     }
-    throw new ApiError(res.status, message);
+    throw new ApiError(res.status, message, hint, code);
   }
 
   if (res.status === 204) return undefined as T;

@@ -4,6 +4,7 @@ import { Bell, KeyRound, Search } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { toast } from 'sonner';
+import { errorToast } from '@/lib/errors';
 import { DataTable, type Column } from '@/components/data-table';
 import { EmptyState } from '@/components/empty-state';
 import { FilterSelect, type FilterOption } from '@/components/filter-select';
@@ -108,7 +109,7 @@ export function LockerHistory() {
       }
       reload();
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'Алдаа гарлаа');
+      errorToast(e, 'Алдаа гарлаа');
     } finally {
       setReminding(null);
     }

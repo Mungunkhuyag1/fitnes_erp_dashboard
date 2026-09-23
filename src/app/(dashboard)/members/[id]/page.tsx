@@ -22,6 +22,7 @@ import {
 import { useParams } from 'next/navigation';
 import { useState } from 'react';
 import { toast } from 'sonner';
+import { errorToast } from '@/lib/errors';
 import {
   CardStageBadge,
   CardStageHint,
@@ -228,7 +229,7 @@ export default function MemberDetailPage() {
       setReason('');
       reload();
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Алдаа гарлаа');
+      errorToast(err, 'Алдаа гарлаа');
     } finally {
       setBusy(false);
     }
@@ -240,7 +241,7 @@ export default function MemberDetailPage() {
       toast.success('Терминал руу дахин бичихээр дараалалд орлоо');
       setTimeout(reload, 2500);
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Алдаа гарлаа');
+      errorToast(err, 'Алдаа гарлаа');
     }
   }
 
@@ -259,7 +260,7 @@ export default function MemberDetailPage() {
       });
       setTimeout(reload, 2500);
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Алдаа гарлаа');
+      errorToast(err, 'Алдаа гарлаа');
     } finally {
       setSyncing(null);
     }
@@ -283,7 +284,7 @@ export default function MemberDetailPage() {
       reloadLockers();
       reload();
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Алдаа гарлаа');
+      errorToast(err, 'Алдаа гарлаа');
     } finally {
       setReturning(null);
     }

@@ -3,6 +3,7 @@
 import { Check, Copy, Loader2, MessageSquare, Unplug } from 'lucide-react';
 import { useState } from 'react';
 import { toast } from 'sonner';
+import { errorToast } from '@/lib/errors';
 import { Button } from '@/components/ui/button';
 import {
   Card,
@@ -69,7 +70,7 @@ export function MetaConnectionCard() {
       setAppSecret('');
       reload();
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'Алдаа гарлаа');
+      errorToast(e, 'Алдаа гарлаа');
     } finally {
       setBusy(false);
     }
@@ -82,7 +83,7 @@ export function MetaConnectionCard() {
       toast.success('Холболт салгагдлаа');
       reload();
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'Алдаа гарлаа');
+      errorToast(e, 'Алдаа гарлаа');
     } finally {
       setBusy(false);
     }

@@ -3,6 +3,7 @@
 import { Loader2 } from 'lucide-react';
 import { useState, type ReactNode } from 'react';
 import { toast } from 'sonner';
+import { errorToast } from '@/lib/errors';
 import { Button } from '@/components/ui/button';
 import {
   Card,
@@ -111,7 +112,7 @@ function Inner({
       toast.success('Хадгалагдлаа');
       onSaved();
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'Алдаа гарлаа');
+      errorToast(e, 'Алдаа гарлаа');
     } finally {
       setBusy(false);
     }

@@ -3,6 +3,7 @@
 import { Loader2, UserCog } from 'lucide-react';
 import { useState } from 'react';
 import { toast } from 'sonner';
+import { errorToast } from '@/lib/errors';
 import { FilterSelect, type FilterOption } from '@/components/filter-select';
 import { useApi } from '@/hooks/use-api';
 import { api, type Page } from '@/lib/api';
@@ -74,7 +75,7 @@ export function StaffLinkField({
       );
       onChange();
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'Алдаа гарлаа');
+      errorToast(e, 'Алдаа гарлаа');
     } finally {
       setSaving(false);
     }

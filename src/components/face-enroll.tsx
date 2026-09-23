@@ -12,7 +12,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { api } from '@/lib/api';
+import { api, ApiError } from '@/lib/api';
 
 /**
  * Терминал дээр царай уншуулах — WinFit-ээс эхлүүлнэ.
@@ -63,6 +63,8 @@ export function FaceEnrollButton({
   const [open, setOpen] = useState(false);
   const [phase, setPhase] = useState<Phase>('waiting');
   const [error, setError] = useState<string | null>(null);
+  /** Юу хийхийг зааж өгөх нэмэлт мөр — тунел унасан гэх мэт. */
+  const [hint, setHint] = useState<string | null>(null);
   const [elapsed, setElapsed] = useState(0);
   const abort = useRef<AbortController | null>(null);
 
@@ -87,6 +89,7 @@ export function FaceEnrollButton({
     setOpen(true);
     setPhase('waiting');
     setError(null);
+    setHint(null);
     setElapsed(0);
     try {
       await api.post(`/members/${memberId}/face`, undefined, ctrl.signal);
@@ -98,6 +101,7 @@ export function FaceEnrollButton({
       if (ctrl.signal.aborted) return;
       setPhase('error');
       setError(e instanceof Error ? e.message : 'Алдаа гарлаа');
+      setHint(e instanceof ApiError ? (e.hint ?? null) : null);
     }
   }
 
@@ -209,6 +213,18 @@ export function FaceEnrollButton({
                 </DialogTitle>
                 <DialogDescription>{error}</DialogDescription>
               </DialogHeader>
+
+              {/*
+                Тунел унасан үед «юу хийх вэ» гэдгийг ЭНД хэлнэ. Эс
+                бөгөөс ажилтан гишүүнээ дахин дахин зогсоох ба асуудал
+                нь заалан дээрх компьютерт байгааг мэдэхгүй.
+              */}
+              {hint && (
+                <p className="text-muted-foreground bg-muted/50 rounded-md px-3 py-2 text-[11px] leading-relaxed">
+                  {hint}
+                </p>
+              )}
+
               <DialogFooter>
                 <Button variant="outline" onClick={() => setOpen(false)}>
                   Хаах

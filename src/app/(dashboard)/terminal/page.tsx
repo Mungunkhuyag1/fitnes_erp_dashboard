@@ -3,6 +3,7 @@
 import { CheckCircle2, DoorOpen, Loader2, MonitorSmartphone, RefreshCw, ScanFace, Settings2, Stethoscope, XCircle } from 'lucide-react';
 import { useState } from 'react';
 import { toast } from 'sonner';
+import { errorToast } from '@/lib/errors';
 import { ChartCard } from '@/components/chart-card';
 import { ColumnChart, TrendChart } from '@/components/charts';
 import { LinkButton } from '@/components/link-button';
@@ -105,7 +106,7 @@ export default function TerminalPage() {
         description: 'Үйлдэл аудитад бичигдэв',
       });
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'Алдаа гарлаа');
+      errorToast(e, 'Алдаа гарлаа');
     } finally {
       setOpening(null);
     }

@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import { useState } from 'react';
 import { toast } from 'sonner';
+import { errorToast } from '@/lib/errors';
 import Link from 'next/link';
 import { DataTable, type Column } from '@/components/data-table';
 import { DeviceAuditCard } from '@/components/device-audit-card';
@@ -121,7 +122,7 @@ export default function SyncPage() {
         reloadStatus();
       }, 2500);
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'Алдаа гарлаа');
+      errorToast(e, 'Алдаа гарлаа');
     }
   }
 
@@ -135,7 +136,7 @@ export default function SyncPage() {
           .join(', '),
       });
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'Алдаа гарлаа');
+      errorToast(e, 'Алдаа гарлаа');
     } finally {
       setBusy(null);
       reload();
@@ -167,7 +168,7 @@ export default function SyncPage() {
       reload();
       reloadStatus();
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'Алдаа гарлаа');
+      errorToast(e, 'Алдаа гарлаа');
     } finally {
       setResyncingAll(false);
     }
@@ -226,7 +227,7 @@ export default function SyncPage() {
       reload();
       reloadStatus();
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'Алдаа гарлаа');
+      errorToast(e, 'Алдаа гарлаа');
     } finally {
       setBusy(null);
     }

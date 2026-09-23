@@ -3,6 +3,7 @@
 import { Loader2 } from 'lucide-react';
 import { useState } from 'react';
 import { toast } from 'sonner';
+import { errorToast } from '@/lib/errors';
 import { Button } from '@/components/ui/button';
 import {
   Card,
@@ -42,7 +43,7 @@ export default function PasswordSettings() {
       toast.success('Нууц үг солигдлоо', { description: 'Дахин нэвтэрнэ үү' });
       signOut();
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'Алдаа гарлаа');
+      errorToast(e, 'Алдаа гарлаа');
       setBusy(false);
     }
   }

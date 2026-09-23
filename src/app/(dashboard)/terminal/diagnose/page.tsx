@@ -12,6 +12,7 @@ import {
 } from 'lucide-react';
 import { useState } from 'react';
 import { toast } from 'sonner';
+import { errorToast } from '@/lib/errors';
 import { PageHeader } from '@/components/page-header';
 import { Button } from '@/components/ui/button';
 import {
@@ -82,7 +83,7 @@ export default function DiagnosePage() {
         toast.success('Бүх шалгалт амжилттай', { description: `${r.ok} алхам` });
       }
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'Оношилгоо ажиллуулж чадсангүй');
+      errorToast(e, 'Оношилгоо ажиллуулж чадсангүй');
     } finally {
       setBusy(false);
     }

@@ -12,6 +12,7 @@ import {
 } from 'lucide-react';
 import { Fragment, useState } from 'react';
 import { toast } from 'sonner';
+import { errorToast } from '@/lib/errors';
 import { DataTable, type Column } from '@/components/data-table';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -168,7 +169,7 @@ export default function StaffUsersPage() {
       setActiveTarget(null);
       reload();
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'Алдаа гарлаа');
+      errorToast(e, 'Алдаа гарлаа');
     } finally {
       setBusy(false);
     }
@@ -179,7 +180,7 @@ export default function StaffUsersPage() {
       await api.post(`/staff/password-resets/${id}/resolve`, {});
       reloadResets();
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'Алдаа гарлаа');
+      errorToast(e, 'Алдаа гарлаа');
     }
   }
 
@@ -575,7 +576,7 @@ function RoleDialog({
       );
       onDone();
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'Алдаа гарлаа');
+      errorToast(e, 'Алдаа гарлаа');
     } finally {
       setBusy(false);
     }
@@ -671,7 +672,7 @@ function AddStaffDialog({
       setPassword('');
       onDone();
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'Алдаа гарлаа');
+      errorToast(e, 'Алдаа гарлаа');
     } finally {
       setBusy(false);
     }
@@ -785,7 +786,7 @@ function ResetPasswordDialog({
       });
       onDone();
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'Алдаа гарлаа');
+      errorToast(e, 'Алдаа гарлаа');
     } finally {
       setBusy(false);
     }

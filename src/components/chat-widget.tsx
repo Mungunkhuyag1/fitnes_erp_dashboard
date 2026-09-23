@@ -12,6 +12,7 @@ import {
 import { usePathname } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
+import { errorToast } from '@/lib/errors';
 import {
   ChatAvatar,
   ChatBubble,
@@ -135,7 +136,7 @@ export function ChatWidget({ unread }: { unread: number }) {
       reloadThread();
       reload();
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'Алдаа гарлаа');
+      errorToast(e, 'Алдаа гарлаа');
     } finally {
       setSending(false);
     }

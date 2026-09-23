@@ -11,6 +11,7 @@ import {
 import { useRouter } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
+import { errorToast } from '@/lib/errors';
 import { LinkButton } from '@/components/link-button';
 import { MemberPicker } from '@/components/member-picker';
 import { PageHeader } from '@/components/page-header';
@@ -137,7 +138,7 @@ export default function InboxPage() {
         reloadThread();
       }
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'Алдаа гарлаа');
+      errorToast(e, 'Алдаа гарлаа');
     } finally {
       setSending(false);
     }
@@ -151,7 +152,7 @@ export default function InboxPage() {
       reloadThread();
       reload();
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'Алдаа гарлаа');
+      errorToast(e, 'Алдаа гарлаа');
     } finally {
       setLinking(false);
     }

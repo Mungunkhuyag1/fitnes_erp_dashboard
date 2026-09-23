@@ -11,6 +11,7 @@ import {
 import Link from 'next/link';
 import { useState } from 'react';
 import { toast } from 'sonner';
+import { errorToast } from '@/lib/errors';
 import { LinkButton } from '@/components/link-button';
 import { Button } from '@/components/ui/button';
 import {
@@ -61,7 +62,7 @@ export function TerminalQuickActions({ devices }: { devices: DeviceBrief[] }) {
         description: 'Үйлдэл аудитад бичигдэв',
       });
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'Алдаа гарлаа');
+      errorToast(e, 'Алдаа гарлаа');
     } finally {
       setOpening(null);
     }
@@ -100,7 +101,7 @@ export function TerminalQuickActions({ devices }: { devices: DeviceBrief[] }) {
         r.ingested ? `${r.ingested} шинэ ирц орлоо` : 'Шинэ ирц алга',
       );
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'Алдаа гарлаа');
+      errorToast(e, 'Алдаа гарлаа');
     } finally {
       setBusy(null);
     }
@@ -117,7 +118,7 @@ export function TerminalQuickActions({ devices }: { devices: DeviceBrief[] }) {
           : 'Шинээр бүртгэгдсэн царай алга',
       );
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'Алдаа гарлаа');
+      errorToast(e, 'Алдаа гарлаа');
     } finally {
       setBusy(null);
     }

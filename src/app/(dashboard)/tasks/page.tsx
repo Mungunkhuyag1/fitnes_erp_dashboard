@@ -2,7 +2,7 @@
 
 import { CalendarCheck, ChevronLeft, ChevronRight, Plus } from 'lucide-react';
 import { useMemo, useState } from 'react';
-import { toast } from 'sonner';
+import { errorToast } from '@/lib/errors';
 import { PageHeader } from '@/components/page-header';
 import {
   Sheet,
@@ -121,7 +121,7 @@ export default function TasksPage() {
       if (t) setDialog({ open: true, task: t });
     } catch (e) {
       // Чимээгүй байвал харандаа ер ажиллахгүй мэт харагдана.
-      toast.error(e instanceof Error ? e.message : 'Ажлын мэдээлэл татагдсангүй');
+      errorToast(e, 'Ажлын мэдээлэл татагдсангүй');
     }
   }
 

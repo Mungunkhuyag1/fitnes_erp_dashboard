@@ -10,6 +10,7 @@ import {
 } from 'lucide-react';
 import { useState } from 'react';
 import { toast } from 'sonner';
+import { errorToast } from '@/lib/errors';
 import { Button } from '@/components/ui/button';
 import {
   Card,
@@ -111,7 +112,7 @@ export function TerminalConnectionCard() {
       }
       reload();
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'Хайлт амжилтгүй');
+      errorToast(e, 'Хайлт амжилтгүй');
     } finally {
       setBusy(null);
     }
@@ -138,7 +139,7 @@ export function TerminalConnectionCard() {
       else toast.error('Холбогдсонгүй', { description: r.test.detail });
       reload();
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'Хадгалж чадсангүй');
+      errorToast(e, 'Хадгалж чадсангүй');
     } finally {
       setBusy(null);
     }
