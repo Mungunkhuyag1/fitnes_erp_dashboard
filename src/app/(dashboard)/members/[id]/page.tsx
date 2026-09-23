@@ -20,7 +20,7 @@ import {
   Undo2,
 } from 'lucide-react';
 import { useParams } from 'next/navigation';
-import { useState } from 'react';
+import { Fragment, useState } from 'react';
 import { toast } from 'sonner';
 import { errorToast } from '@/lib/errors';
 import {
@@ -98,6 +98,8 @@ interface MemberDetail {
   lastVisitAt: string | null;
   /** Ажилтны данстай холбоос — байвал тайлангаас хасагдана. */
   staffUser: { id: string; name: string; email: string; role: string } | null;
+  /** «Терминал руу sync» дарвал ЯГ ЮУ бичигдэх вэ. */
+  devicePlan: { label: string; value: string }[];
   createdAt: string;
 }
 
@@ -695,6 +697,35 @@ export default function MemberDetailPage() {
             />
             <Field label="Сүүлд синк">{dateTime(m.hikSyncedAt)}</Field>
             <Field label="Сүүлд ирсэн">{relative(m.lastVisitAt)}</Field>
+
+            {/*
+              ★ «ТЕРМИНАЛ РУУ SYNC» ДАРВАЛ ЮУ ЯВАХ ВЭ
+
+              Товч нь дээр байгаа ч юу бичихийг нь хэлдэггүй байв.
+              Ялангуяа `Эрх: Унтраах` гэдэг нь чухал — түр зогсоосон
+              эсвэл цуцалсан гишүүнд терминал дээрх эрх хаагдана
+              гэсэн үг бөгөөд дарахаасаа өмнө харах ёстой.
+
+              ⚠ Эдгээр нь ОДООГИЙН төлөвөөс тооцогдоно. Эрх сунгасны
+              дараа энэ хэсэг шинэчлэгдэнэ.
+            */}
+            {m.devicePlan?.length > 0 && (
+              <div className="border-t pt-3">
+                <p className="text-muted-foreground mb-1.5 text-xs">
+                  Sync дарвал бичигдэх утга
+                </p>
+                <dl className="bg-muted/50 grid grid-cols-[6.5rem_1fr] gap-x-3 gap-y-1 rounded-md p-2.5">
+                  {m.devicePlan.map((p) => (
+                    <Fragment key={p.label}>
+                      <dt className="text-muted-foreground text-[11px]">
+                        {p.label}
+                      </dt>
+                      <dd className="text-[11px] break-words">{p.value}</dd>
+                    </Fragment>
+                  ))}
+                </dl>
+              </div>
+            )}
 
             {/*
               Ажилтан уу — терминал өөрөө ялгадаггүй тул энд тэмдэглэнэ.

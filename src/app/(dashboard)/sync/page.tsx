@@ -12,7 +12,7 @@ import {
   ScanFace,
   Wrench,
 } from 'lucide-react';
-import { useState } from 'react';
+import { Fragment, useState } from 'react';
 import { toast } from 'sonner';
 import { errorToast } from '@/lib/errors';
 import Link from 'next/link';
@@ -67,6 +67,14 @@ interface OutboxRow {
   createdAt: string;
   processedAt: string | null;
   groupKey: string | null;
+  /**
+   * ЯГ ЮУ бичигдэх вэ — backend-ийн тооцоолсон.
+   *
+   * ⚠ ОДООГИЙН төлөвөөс гарна. Дараалал нь зөвхөн `memberId` хадгалдаг
+   * тул утгуудыг ажиллах агшинд тооцдог — энэ нь «Дахин дарвал юу явах
+   * вэ» гэсэн үнэн хариу болно.
+   */
+  plan: { label: string; value: string }[];
 }
 
 /**
@@ -264,7 +272,26 @@ export default function SyncPage() {
       key: 'topic',
       header: 'Үйлдэл',
       cell: (r) => (
-        <span className="text-sm">{TOPIC_LABEL[r.topic] ?? r.topic}</span>
+        <div className="min-w-0">
+          <span className="text-sm">{TOPIC_LABEL[r.topic] ?? r.topic}</span>
+          {/*
+            ЯГ ЮУ бичихийг НЭГ мөрөөр. Урьд нь «Терминалд бичих» гэж л
+            бичдэг байсан тул алдаа гарахад ажилтан ямар огноо, ямар
+            эрхээр бичих гэж байсныг мэдэхгүй байв.
+
+            ⚠ Хоёр талбараар хязгаарлав — мөр өндөрсвөл хүснэгт
+            уншихад хэцүү болно. Бүтнийг нь дэлгэрэнгүй цонх харуулна.
+          */}
+          {r.plan?.length > 0 && (
+            <p className="text-muted-foreground truncate text-[11px]">
+              {r.plan
+                .slice(0, 2)
+                .map((p) => `${p.label}: ${p.value}`)
+                .join(' · ')}
+              {r.plan.length > 2 && ' …'}
+            </p>
+          )}
+        </div>
       ),
     },
     {
@@ -633,6 +660,30 @@ function OutboxDetail({
           · {row.attempts} оролдлого
         </span>
       </div>
+
+      {/*
+        ★ ЯГ ЮУ БИЧИГДЭХ ВЭ — хамгийн эхэнд.
+        Алдаа шалгаж байгаа хүний ЭХНИЙ асуулт энэ байдаг. Доор нь
+        дарааллын техникийн талбарууд (ID, бүлэг) байрлана — тэд
+        ховор хэрэгтэй.
+
+        ⚠ «Бичих утга» гэж нэрлэв, «Бичсэн утга» гэж БИШ: эдгээр нь
+        ОДООГИЙН төлөвөөс тооцогдсон бөгөөд хуучин `done` мөрийн хувьд
+        тэр үед бичигдсэн утгаас ялгаатай байж болно.
+      */}
+      {row.plan?.length > 0 && (
+        <div className="space-y-1.5">
+          <p className="text-muted-foreground text-xs">Бичих утга</p>
+          <dl className="bg-muted/50 grid grid-cols-[8rem_1fr] gap-x-3 gap-y-1.5 rounded-md p-3">
+            {row.plan.map((p) => (
+              <Fragment key={p.label}>
+                <dt className="text-muted-foreground text-xs">{p.label}</dt>
+                <dd className="text-xs break-words">{p.value}</dd>
+              </Fragment>
+            ))}
+          </dl>
+        </div>
+      )}
 
       <dl className="grid grid-cols-[7rem_1fr] gap-x-3 gap-y-2">
         {(row.memberName || row.phone) && (
