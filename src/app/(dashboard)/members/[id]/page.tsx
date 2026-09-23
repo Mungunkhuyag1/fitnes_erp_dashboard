@@ -567,34 +567,12 @@ export default function MemberDetailPage() {
           {m.status === 'cancelled' ? 'Сэргээж сунгах' : 'Эрх сунгах'}
         </Button>
 
-        {/* Гараар sync — систем автоматаар хийдэг ч зөрүү сэжиглэвэл
-            ажилтан шууд түлхэх боломжтой байх ёстой. */}
-        <Button
-          variant="outline"
-          onClick={resyncDevice}
-          disabled={syncing !== null}
-        >
-          {syncing === 'device' ? (
-            <Loader2 className="size-4 animate-spin" />
-          ) : (
-            <ScanFace className="size-4" />
-          )}
-          Терминал руу sync
-        </Button>
-        {m.hasCard && (
-          <Button
-            variant="outline"
-            onClick={resyncCard}
-            disabled={syncing !== null}
-          >
-            {syncing === 'loopy' ? (
-              <Loader2 className="size-4 animate-spin" />
-            ) : (
-              <CreditCard className="size-4" />
-            )}
-            Wallet карт руу sync
-          </Button>
-        )}
+        {/*
+          ⚠ Sync товчнууд ЭНДЭЭС ХАСАГДАВ — Терминал ба Бусад картан
+          ДОТОР шилжив. Тэнд юу бичигдэхийг нь хажууд нь харуулдаг тул
+          ажилтан уншаад шууд дарна. Энд байхад дэлгэцийн дээд талд,
+          утгаасаа хэдэн зуун пиксель зайтай байв.
+        */}
         {can('manager') && m.status !== 'cancelled' && (
           <>
             {m.status === 'suspended' ? (
@@ -711,9 +689,30 @@ export default function MemberDetailPage() {
             */}
             {m.devicePlan?.length > 0 && (
               <div className="border-t pt-3">
-                <p className="text-muted-foreground mb-1.5 text-xs">
-                  Sync дарвал бичигдэх утга
-                </p>
+                {/*
+                  ⚠ Товч нь УТГЫНХАА ХАЖУУД байх ёстой. Урьд нь
+                  дэлгэцийн дээд талд, эндээс хэдэн зуун пиксель
+                  зайтай байв — ажилтан юу бичигдэхийг уншаад дарах
+                  товчоо хайж дээш гүйлгэнэ.
+                */}
+                <div className="mb-1.5 flex items-center justify-between gap-2">
+                  <p className="text-muted-foreground text-xs">
+                    Sync дарвал бичигдэх утга
+                  </p>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={resyncDevice}
+                    disabled={syncing !== null}
+                  >
+                    {syncing === 'device' ? (
+                      <Loader2 className="size-3.5 animate-spin" />
+                    ) : (
+                      <RefreshCw className="size-3.5" />
+                    )}
+                    Sync
+                  </Button>
+                </div>
                 <dl className="bg-muted/50 grid grid-cols-[6.5rem_1fr] gap-x-3 gap-y-1 rounded-md p-2.5">
                   {m.devicePlan.map((p) => (
                     <Fragment key={p.label}>
@@ -763,6 +762,29 @@ export default function MemberDetailPage() {
                       <> · {m.walletDevices} төхөөрөмж</>
                     )}
                   </div>
+                )}
+
+                {/*
+                  ⚠ Зөвхөн КАРТТАЙ үед. Карт үүсээгүй гишүүнд backend
+                  400 буцаадаг тул товчийг харуулах нь ажилтныг дарж
+                  байж алдаа авахад хүргэнэ — тэр үед хийх ажил нь
+                  дээрх заавар (утас нэмэх), sync биш.
+                */}
+                {m.hasCard && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="mt-1.5"
+                    onClick={resyncCard}
+                    disabled={syncing !== null}
+                  >
+                    {syncing === 'loopy' ? (
+                      <Loader2 className="size-3.5 animate-spin" />
+                    ) : (
+                      <RefreshCw className="size-3.5" />
+                    )}
+                    Loopy руу sync
+                  </Button>
                 )}
               </div>
             </Field>
