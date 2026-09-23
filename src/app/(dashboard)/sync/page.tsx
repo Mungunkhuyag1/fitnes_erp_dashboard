@@ -20,6 +20,8 @@ import { DataTable, type Column } from '@/components/data-table';
 import { DeviceAuditCard } from '@/components/device-audit-card';
 import { PageHeader } from '@/components/page-header';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import {
   AlertDialog,
   AlertDialogCancel,
@@ -149,6 +151,13 @@ export default function SyncPage() {
   const [detail, setDetail] = useState<OutboxRow | null>(null);
   const [confirmResyncAll, setConfirmResyncAll] = useState(false);
   const [resyncingAll, setResyncingAll] = useState(false);
+  /**
+   * Дахин баталгаажуулах нууц үг.
+   *
+   * ⚠ Төлөвт л байна, хаана ч хадгалахгүй. Цонх хаагдмагц арилна —
+   * дараагийн удаа дахин оруулна.
+   */
+  const [resyncPassword, setResyncPassword] = useState('');
 
   /**
    * БҮХ гишүүнийг дахин бичих. Гишүүн бүрд 2 мөр үүсэх тул зөвхөн
@@ -160,11 +169,12 @@ export default function SyncPage() {
     try {
       const r = await api.post<{ members: number; queued: number }>(
         '/sync/run/resync-all',
+        { password: resyncPassword },
       );
       toast.success(`${r.members} гишүүн дараалалд оров`, {
         description: `${r.queued} үйлдэл — дуусахад хэдэн минут болно`,
       });
-      setConfirmResyncAll(false);
+      closeResync();
       reload();
       reloadStatus();
     } catch (e) {
@@ -172,6 +182,12 @@ export default function SyncPage() {
     } finally {
       setResyncingAll(false);
     }
+  }
+
+  /** Цонх хаахдаа нууц үгийг ЗААВАЛ арилгана — санах ойд үлдээхгүй. */
+  function closeResync() {
+    setConfirmResyncAll(false);
+    setResyncPassword('');
   }
 
   /**
@@ -348,12 +364,22 @@ export default function SyncPage() {
       icon: CalendarX,
       run: () => runJob('expire'),
     },
-    {
-      key: 'resync-all',
-      label: 'Бүгдийг дахин бичих',
-      icon: RotateCcw,
-      run: () => setConfirmResyncAll(true),
-    },
+    /*
+     * ⚠ ЗӨВХӨН АДМИН. Энэ нь терминал дээрх БҮХ бичлэгийг хөндөх
+     * цорын ганц товч — бусад ажил нь зөрүүтэй мөрүүдийг л засдаг.
+     * Backend нь ч `@Roles(ADMIN)`-той; энд нуух нь ресепшнд
+     * дарагдаад 403 авахаас сэргийлнэ.
+     */
+    ...(can('admin')
+      ? [
+          {
+            key: 'resync-all',
+            label: 'Бүгдийг дахин бичих',
+            icon: RotateCcw,
+            run: () => setConfirmResyncAll(true),
+          },
+        ]
+      : []),
   ];
 
   return (
@@ -417,7 +443,10 @@ export default function SyncPage() {
 
       <DeviceAuditCard />
 
-      <AlertDialog open={confirmResyncAll} onOpenChange={setConfirmResyncAll}>
+      <AlertDialog
+        open={confirmResyncAll}
+        onOpenChange={(v) => !v && closeResync()}
+      >
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Бүх гишүүнийг дахин бичих үү?</AlertDialogTitle>
@@ -432,9 +461,45 @@ export default function SyncPage() {
               өөрөө дараалалд оруулдаг.
             </AlertDialogDescription>
           </AlertDialogHeader>
+
+          {/*
+            ★ НУУЦ ҮГЭЭ ДАХИН ОРУУЛНА
+
+            Нэвтэрсэн сесс нь «энэ хүн өглөө нэвтэрсэн» гэдгийг л
+            батална. Ресепшний компьютер өдөржин нээлттэй байдаг бөгөөд
+            энэ товч нь терминал дээрх БҮХ бичлэгийг хөндөнө.
+
+            ⚠ `autoComplete="off"` — браузер үүнийг «нэвтрэх маягт» гэж
+            үзээд нууц үг хадгалах санал болговол дараагийн хүн нэг
+            товшилтоор дарж чадна.
+          */}
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              if (resyncPassword && !resyncingAll) resyncAll();
+            }}
+            className="space-y-1.5"
+          >
+            <Label htmlFor="resync-pw" className="text-xs">
+              Баталгаажуулахын тулд нууц үгээ оруулна уу
+            </Label>
+            <Input
+              id="resync-pw"
+              type="password"
+              autoComplete="off"
+              value={resyncPassword}
+              onChange={(e) => setResyncPassword(e.target.value)}
+              disabled={resyncingAll}
+              placeholder="Нууц үг"
+            />
+          </form>
+
           <AlertDialogFooter>
             <AlertDialogCancel disabled={resyncingAll}>Цуцлах</AlertDialogCancel>
-            <Button onClick={resyncAll} disabled={resyncingAll}>
+            <Button
+              onClick={resyncAll}
+              disabled={resyncingAll || !resyncPassword}
+            >
               {resyncingAll && <Loader2 className="size-4 animate-spin" />}
               Тийм, дахин бичих
             </Button>
