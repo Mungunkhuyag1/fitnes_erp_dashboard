@@ -1,7 +1,7 @@
 'use client';
 
-import { CheckCircle2, Loader2, ScanFace, TriangleAlert } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { CheckCircle2, Loader2, ScanFace, TriangleAlert, X } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import {
@@ -63,20 +63,62 @@ export function FaceEnrollButton({
   const [open, setOpen] = useState(false);
   const [phase, setPhase] = useState<Phase>('waiting');
   const [error, setError] = useState<string | null>(null);
+  const [elapsed, setElapsed] = useState(0);
+  const abort = useRef<AbortController | null>(null);
+
+  /*
+   * ★ ӨНГӨРСӨН СЕКУНДЫГ ХАРУУЛНА
+   *
+   * «1 минут хүртэл» гэсэн нь хийсвэр: ажилтан 20 секунд болоход
+   * гацсан уу гэж эргэлзэж эхэлдэг. Тоолуур явж байвал систем амьд
+   * гэдэг нь харагдах ба хэр удахыг мэдэрнэ.
+   */
+  useEffect(() => {
+    if (!open || phase !== 'waiting') return;
+    const t = setInterval(() => setElapsed((n) => n + 1), 1_000);
+    return () => clearInterval(t);
+  }, [open, phase]);
 
   async function start() {
+    abort.current?.abort();
+    const ctrl = new AbortController();
+    abort.current = ctrl;
+
     setOpen(true);
     setPhase('waiting');
     setError(null);
+    setElapsed(0);
     try {
-      await api.post(`/members/${memberId}/face`);
+      await api.post(`/members/${memberId}/face`, undefined, ctrl.signal);
       setPhase('done');
       toast.success('Царай бүртгэгдлээ', { description: name });
       onDone();
     } catch (e) {
+      // Бид өөрсдөө таслсан бол `cancel()` төлөвөө аль хэдийн тохируулсан.
+      if (ctrl.signal.aborted) return;
       setPhase('error');
       setError(e instanceof Error ? e.message : 'Алдаа гарлаа');
     }
+  }
+
+  /**
+   * Уншуулалтыг зогсооно.
+   *
+   * ★ ХОЁР ТАЛД ХОЁУЛАНД НЬ
+   *
+   *  1. Браузерын хүсэлтийг таслана — цонх ШУУД хаагдана
+   *  2. Сервер рүү «цуцла» гэж хэлнэ — тэр терминалтай ярихаа болино
+   *
+   * ⚠ 2-гүйгээр 1 нь хангалтгүй: сервер хүсэлт таслагдсаныг мэдэхгүй
+   * тул терминалтай ярьсаар байх ба дараагийн хүн «өөр хүний царай
+   * уншуулж байна» гэсэн хариу авна.
+   */
+  function cancel() {
+    abort.current?.abort();
+    setOpen(false);
+    void api.post(`/members/${memberId}/face/cancel`).catch(() => {
+      // Цуцлалт хүрэхгүй бол хамгийн муудаа минутын дараа өөрөө суларна.
+    });
   }
 
   return (
@@ -121,9 +163,9 @@ export function FaceEnrollButton({
                 <span className="bg-primary/10 text-primary flex size-20 items-center justify-center rounded-full">
                   <ScanFace className="size-9 animate-pulse" />
                 </span>
-                <span className="text-muted-foreground flex items-center gap-2 text-xs">
+                <span className="text-muted-foreground flex items-center gap-2 text-xs tabular-nums">
                   <Loader2 className="size-3.5 animate-spin" />
-                  Хүлээж байна… 1 минут хүртэл
+                  Хүлээж байна… {elapsed} / 60 сек
                 </span>
               </div>
 
@@ -131,6 +173,13 @@ export function FaceEnrollButton({
                 Энэ хооронд терминал дээр өөр хүн уншуулахгүй байх нь чухал —
                 камер нэг бөгөөд эхэлж ирсэн царай бүртгэгдэнэ.
               </p>
+
+              <DialogFooter>
+                <Button variant="outline" onClick={cancel}>
+                  <X className="size-4" />
+                  Цуцлах
+                </Button>
+              </DialogFooter>
             </>
           )}
 

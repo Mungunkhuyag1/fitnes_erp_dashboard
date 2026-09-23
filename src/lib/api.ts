@@ -165,8 +165,14 @@ async function blob(path: string, signal?: AbortSignal): Promise<string> {
 export const api = {
   blob,
   get: <T>(path: string, signal?: AbortSignal) => request<T>(path, { signal }),
-  post: <T>(path: string, body?: unknown) =>
-    request<T>(path, { method: 'POST', body }),
+  /*
+   * `signal` нь заавал биш — урт хүсэлтийг таслахад (царай уншуулах).
+   *
+   * ⚠ Таслах нь СЕРВЕРИЙГ зогсоохгүй: тэр ажлаа үргэлжлүүлнэ. Серверийг
+   * зогсоох шаардлагатай бол тусдаа «цуцлах» дуудлага хэрэгтэй.
+   */
+  post: <T>(path: string, body?: unknown, signal?: AbortSignal) =>
+    request<T>(path, { method: 'POST', body, signal }),
   patch: <T>(path: string, body?: unknown) =>
     request<T>(path, { method: 'PATCH', body }),
   del: <T>(path: string) => request<T>(path, { method: 'DELETE' }),
