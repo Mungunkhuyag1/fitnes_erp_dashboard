@@ -282,8 +282,15 @@ export default function SyncPage() {
             ⚠ Хоёр талбараар хязгаарлав — мөр өндөрсвөл хүснэгт
             уншихад хэцүү болно. Бүтнийг нь дэлгэрэнгүй цонх харуулна.
           */}
+          {/*
+            ⚠ `max-w` ЗААВАЛ. `truncate` нь өргөн нь ХЯЗГААРЛАГДСАН
+            хайрцагт л ажилладаг. Хүснэгтийн багана нь агуулгаараа
+            тэлдэг (`table-layout: auto`) тул хязгааргүй орхивол
+            «Хүлээн авагч: …@gmail.com · Гарчиг: …» гэсэн урт мөр
+            баганыг 700px болгож, хуудсыг баруун тийш хална.
+          */}
           {r.plan?.length > 0 && (
-            <p className="text-muted-foreground truncate text-[11px]">
+            <p className="text-muted-foreground max-w-[26rem] truncate text-[11px]">
               {r.plan
                 .slice(0, 2)
                 .map((p) => `${p.label}: ${p.value}`)

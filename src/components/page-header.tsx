@@ -17,7 +17,22 @@ export function PageHeader({
           <p className="text-muted-foreground text-sm">{description}</p>
         )}
       </div>
-      {children && <div className="flex shrink-0 items-center gap-2">{children}</div>}
+      {/*
+        ⚠ `flex-wrap`, `shrink-0` БИШ.
+
+        `shrink-0` нь бүлгийг агуулгынхаа өргөнөөс доош буулгахгүй тул
+        товч олон болмогц (Синк дэлгэц дээр 5) НЭГ мөрөнд багтахаа
+        болиод хуудсыг БАРУУН ТИЙШ хална. Хэвтээ гүйлт үүсч, хажуугийн
+        цэс, толгой хоёр зөрнө.
+
+        Бүлэг дотроо мөр таслах нь товчийг шахахгүй — `Button` нь
+        өөрийн доод өргөнтэй тул шинэ мөр рүү БҮТНЭЭРЭЭ бууна.
+      */}
+      {children && (
+        <div className="flex flex-wrap items-center justify-end gap-2">
+          {children}
+        </div>
+      )}
     </div>
   );
 }
