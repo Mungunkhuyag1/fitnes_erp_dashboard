@@ -5,6 +5,7 @@ import {
   CalendarCheck,
   MessageSquare,
   DoorOpen,
+  Flower2,
   Gift,
   KeyRound,
   LayoutDashboard,
@@ -46,6 +47,9 @@ export const NAV: NavGroup[] = [
       { href: '/members', label: 'Гишүүд', icon: Users },
       { href: '/lockers', label: 'Шүүгээ', icon: KeyRound },
       { href: '/check-ins', label: 'Ирц', icon: DoorOpen },
+      // Йог — заалны бүртгэлээс ТУСДАА. Терминал оролцохгүй, хаалгыг
+      // админ өөрөө нээдэг тул энэ нь цэвэр хичээлийн бүртгэл.
+      { href: '/yoga', label: 'Йог', icon: Flower2 },
       // Ажилтны ДОТООД даалгавар — гишүүдэд хамааралгүй тул
       // «Удирдлага» биш «Ажил» бүлэгт: өдөр тутам харах зүйл.
       { href: '/tasks', label: 'Ажлын төлөвлөгөө', icon: CalendarCheck },

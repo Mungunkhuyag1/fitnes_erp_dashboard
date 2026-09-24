@@ -117,7 +117,43 @@ async function request<T>(path: string, opts: RequestOptions = {}): Promise<T> {
     });
   };
 
-  let res = await send();
+  /*
+   * ★ СҮЛЖЭЭНИЙ ДОГОЛДЛЫГ ХҮНИЙ ХЭЛЭЭР
+   *
+   * `fetch` нь сервер хүрэхгүй, холболт тасрах, эсвэл хариу ирэхээс
+   * өмнө таслагдахад «Failed to fetch» гэж шиддэг. Тэр мөр нь
+   * ажилтанд юу ч хэлэхгүй.
+   *
+   * ⚠ ХАМГИЙН АЮУЛТАЙ ТАЛ: өөрчлөлт хийдэг дуудлага (POST/PATCH) дээр
+   * энэ алдаа гарахад үйлдэл нь СЕРВЕР ДЭЭР БИЕЛСЭН байж болно —
+   * зөвхөн хариу нь эргэж ирээгүй. Ажилтан «болсонгүй» гэж бодоод
+   * дахин дарвал хоёр удаа хийгдэх эрсдэлтэй. Эрх сунгах нь
+   * `idempotencyKey`-ээр хамгаалагдсан ч бусад нь үгүй.
+   *
+   * Railway дээр шинэ хувилбар гарах мөчид яг ингэж тохиолддог:
+   * хүсэлт хуучин процесс дээр биелээд, хариу нь буцахаас өмнө тэр
+   * процесс унтарна.
+   */
+  const mutating = (opts.method ?? 'GET') !== 'GET';
+  const call = async (): Promise<Response> => {
+    try {
+      return await send();
+    } catch (e) {
+      // Зориуд цуцалсан бол хэвээр дамжуулна — алдаа биш.
+      if ((e as Error)?.name === 'AbortError') throw e;
+      throw new ApiError(
+        0,
+        mutating
+          ? 'Сервертэй холбогдож чадсангүй. ⚠ Үйлдэл БИЕЛСЭН БАЙЖ БОЛЗОШГҮЙ — ' +
+            'дахин оролдохын өмнө жагсаалтаа шинэчилж шалгана уу.'
+          : 'Сервертэй холбогдож чадсангүй. Интернэтээ шалгаад дахин оролдоно уу.',
+        undefined,
+        'NetworkError',
+      );
+    }
+  };
+
+  let res = await call();
 
   // Access токен дууссан бол нэг удаа шинэчилж дахин оролдоно.
   if (res.status === 401 && !opts.anonymous && read(REFRESH_KEY)) {
@@ -126,7 +162,7 @@ async function request<T>(path: string, opts: RequestOptions = {}): Promise<T> {
     });
     const ok = await refreshing;
     if (ok) {
-      res = await send();
+      res = await call();
     } else {
       clearTokens();
       // Сесс бүрмөсөн дууссан — ХАТУУ шилжилт хийнэ. Router.push нь React

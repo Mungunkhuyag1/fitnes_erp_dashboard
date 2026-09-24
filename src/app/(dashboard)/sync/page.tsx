@@ -97,6 +97,40 @@ const TOPIC_LABEL: Record<string, string> = {
   'loopy.push': 'Wallet мэдэгдэл илгээх',
 };
 
+/**
+ * Ажил АЛЬ систем рүү чиглэсэн бэ.
+ *
+ * ★ ЯАГААД ХЭРЭГТЭЙ ВЭ
+ *
+ * «Хугацаа шинэчлэх» ба «Картын хугацаа сунгах» хоёр нь зэрэгцээд
+ * байхад аль нь терминал, аль нь Wallet карт руу явж байгаа нь
+ * ойлгогдохгүй. Алдаа гарахад ажилтан ХААНА асуудал байгааг мэдэхгүй:
+ * терминал унтарсан уу, Loopy хариу өгөхгүй байна уу.
+ *
+ * ⚠ Topic-ийн угтвараас гаргана — шинэ topic нэмэгдэхэд өөрөө таарна.
+ */
+function systemOf(topic: string): { label: string; tone: string } | null {
+  if (topic.startsWith('hik.')) {
+    return {
+      label: 'Терминал',
+      tone: 'bg-sky-500/10 text-sky-600 dark:text-sky-400',
+    };
+  }
+  if (topic.startsWith('loopy.')) {
+    return {
+      label: 'Loopy',
+      tone: 'bg-violet-500/10 text-violet-600 dark:text-violet-400',
+    };
+  }
+  if (topic.startsWith('mail.')) {
+    return {
+      label: 'Мэйл',
+      tone: 'bg-muted text-muted-foreground',
+    };
+  }
+  return null;
+}
+
 const STATUS: Record<string, { label: string; tone: string; icon: React.ElementType }> = {
   pending: {
     label: 'Хүлээгдэж байна',
@@ -273,7 +307,22 @@ export default function SyncPage() {
       header: 'Үйлдэл',
       cell: (r) => (
         <div className="min-w-0">
-          <span className="text-sm">{TOPIC_LABEL[r.topic] ?? r.topic}</span>
+          <span className="flex flex-wrap items-center gap-1.5">
+            <span className="text-sm">{TOPIC_LABEL[r.topic] ?? r.topic}</span>
+            {(() => {
+              const sys = systemOf(r.topic);
+              return sys ? (
+                <span
+                  className={cn(
+                    'rounded px-1.5 py-0.5 text-[10px] font-medium',
+                    sys.tone,
+                  )}
+                >
+                  {sys.label}
+                </span>
+              ) : null;
+            })()}
+          </span>
           {/*
             ЯГ ЮУ бичихийг НЭГ мөрөөр. Урьд нь «Терминалд бичих» гэж л
             бичдэг байсан тул алдаа гарахад ажилтан ямар огноо, ямар
@@ -722,6 +771,9 @@ function OutboxDetail({
 
         <dt className="text-muted-foreground text-xs">Дарааллын бүлэг</dt>
         <dd className="font-mono text-xs break-all">{row.groupKey ?? '—'}</dd>
+
+        <dt className="text-muted-foreground text-xs">Систем</dt>
+        <dd>{systemOf(row.topic)?.label ?? '—'}</dd>
 
         <dt className="text-muted-foreground text-xs">Topic</dt>
         <dd className="font-mono text-xs break-all">{row.topic}</dd>
