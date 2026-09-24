@@ -1,6 +1,13 @@
 'use client';
 
-import { ArrowLeft, Archive, Pencil, Users } from 'lucide-react';
+import {
+  Archive,
+  ArrowLeft,
+  CalendarDays,
+  Pencil,
+  UserPlus,
+  Users,
+} from 'lucide-react';
 import { useParams } from 'next/navigation';
 import { useState } from 'react';
 import { toast } from 'sonner';
@@ -8,7 +15,10 @@ import { LinkButton } from '@/components/link-button';
 import { PageHeader } from '@/components/page-header';
 import { StatCard } from '@/components/stat-card';
 import { YogaCourseForm } from '@/components/yoga-course-form';
-import { YogaMembers } from '@/components/yoga-members';
+import {
+  YogaAddMemberDialog,
+  YogaMembers,
+} from '@/components/yoga-members';
 import { YogaSchedule } from '@/components/yoga-schedule';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -33,6 +43,7 @@ export default function YogaCoursePage() {
   const { id } = useParams<{ id: string }>();
   const { can } = useAuth();
   const [edit, setEdit] = useState(false);
+  const [addMember, setAddMember] = useState(false);
 
   const { data: c, loading, reload } = useApi<YogaCourse>(`/yoga/courses/${id}`);
 
@@ -74,6 +85,15 @@ export default function YogaCoursePage() {
           <ArrowLeft className="size-4" />
           Буцах
         </LinkButton>
+        {/*
+          ⚠ Гишүүн нэмэх нь ХАМГИЙН ТҮГЭЭМЭЛ үйлдэл. Урьд нь зөвхөн
+          «Гишүүд» табын дотор байсан тул ажилтан хуваарь харж байгаад
+          хүн бүртгэхийн тулд таб солих шаардлагатай байв.
+        */}
+        <Button onClick={() => setAddMember(true)}>
+          <UserPlus className="size-4" />
+          Гишүүн нэмэх
+        </Button>
         {can('manager') && (
           <>
             <Button variant="outline" onClick={() => setEdit(true)}>
@@ -134,11 +154,19 @@ export default function YogaCoursePage() {
       </div>
 
       {/*
-        ⚠ Гишүүд нь АНХДАГЧ таб. Ресепшний хамгийн түгээмэл асуулт
-        «энэ хүн төлсөн үү» — хуваарь нь хааяа хэрэгтэй.
+        ⚠ ЦАГИЙН ХУВААРЬ нь анхдагч. Ангид ороход эхлээд «хэзээ орох
+        вэ, өнөөдөр хичээлтэй юу» гэдгийг хардаг — гишүүдийн жагсаалт
+        нь тухайн хүнийг хайх үед хэрэгтэй болдог.
       */}
-      <Tabs defaultValue="members">
+      <Tabs defaultValue="schedule">
         <TabsList>
+          <TabsTrigger value="schedule">
+            <CalendarDays className="size-4" />
+            Цагийн хуваарь
+            <span className="text-muted-foreground ml-1 text-xs">
+              {c.sessions}
+            </span>
+          </TabsTrigger>
           <TabsTrigger value="members">
             <Users className="size-4" />
             Гишүүд
@@ -146,17 +174,28 @@ export default function YogaCoursePage() {
               {c.enrolled}
             </span>
           </TabsTrigger>
-          <TabsTrigger value="schedule">Цагийн хуваарь</TabsTrigger>
         </TabsList>
-
-        <TabsContent value="members" className="pt-4">
-          <YogaMembers course={c} onDone={reload} />
-        </TabsContent>
 
         <TabsContent value="schedule" className="pt-4">
           <YogaSchedule course={c} onDone={reload} />
         </TabsContent>
+
+        <TabsContent value="members" className="pt-4">
+          <YogaMembers course={c} onDone={reload} />
+        </TabsContent>
       </Tabs>
+
+      {/*
+        ⚠ ХУУДАСНЫ түвшинд — товч нь толгойд байдаг тул хуваарийн таб
+        дээр байхад ч дарагдана. Табын дотор үлдээвэл тэр таб идэвхгүй
+        үед цонх огт render хийгдэхгүй.
+      */}
+      <YogaAddMemberDialog
+        open={addMember}
+        onOpenChange={setAddMember}
+        course={c}
+        onDone={reload}
+      />
 
       {edit && (
         <YogaCourseForm

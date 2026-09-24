@@ -1,6 +1,6 @@
 'use client';
 
-import { ArrowUpDown, Loader2, Plus, Search, Trash2, Wallet } from 'lucide-react';
+import { ArrowUpDown, Loader2, Search, Trash2, Wallet } from 'lucide-react';
 import Link from 'next/link';
 import { useMemo, useState } from 'react';
 import { toast } from 'sonner';
@@ -58,7 +58,6 @@ export function YogaMembers({
   const [search, setSearch] = useState('');
   const [pay, setPay] = useState('');
   const [sort, setSort] = useState('created');
-  const [add, setAdd] = useState(false);
   const [detail, setDetail] = useState<YogaEnrollment | null>(null);
 
   const { data, reload } = useApi<YogaEnrollment[]>(
@@ -115,10 +114,6 @@ export function YogaMembers({
           placeholder="Эрэмбэ"
           icon={<ArrowUpDown className="size-4" />}
         />
-        <Button className="ml-auto" onClick={() => setAdd(true)}>
-          <Plus className="size-4" />
-          Гишүүн нэмэх
-        </Button>
       </div>
 
       <Card className="py-0">
@@ -168,12 +163,6 @@ export function YogaMembers({
         </CardContent>
       </Card>
 
-      <AddDialog
-        open={add}
-        onOpenChange={setAdd}
-        course={course}
-        onDone={refresh}
-      />
       <DetailDialog
         row={detail}
         onClose={() => setDetail(null)}
@@ -183,8 +172,16 @@ export function YogaMembers({
   );
 }
 
-/** Гишүүн нэмэх. */
-function AddDialog({
+/**
+ * Гишүүн нэмэх.
+ *
+ * ★ ЯАГААД ХУУДАСНЫ ТҮВШИНД ВЭ
+ *
+ * «Гишүүн нэмэх» товч толгойд байдаг тул ХУВААРИЙН таб дээр байхад ч
+ * дарагдана. Цонхыг `YogaMembers` дотор үлдээвэл тэр таб идэвхгүй
+ * үед `TabsContent` нь салдаг ба цонх огт render хийгдэхгүй.
+ */
+export function YogaAddMemberDialog({
   open,
   onOpenChange,
   course,

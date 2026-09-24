@@ -1,10 +1,11 @@
 'use client';
 
-import { CalendarDays, Check, DoorOpen, Loader2 } from 'lucide-react';
+import { CalendarDays, Check, DoorOpen, Loader2, Search } from 'lucide-react';
 import { useState } from 'react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
 import {
   Dialog,
   DialogContent,
@@ -73,6 +74,16 @@ export function YogaSchedule({
   if (!data) return <Skeleton className="h-64 w-full" />;
 
   const today = data.sessions.find((s) => s.isToday);
+  /** Болж өнгөрсөн оролт — явцын мөрөнд. */
+  const done = data.sessions.filter((s) => s.past).length;
+
+  /** Сараар бүлэглэнэ — `2026-10` → `2026 оны 10-р сар`. */
+  const groups = new Map<string, ScheduleRow[]>();
+  for (const s of data.sessions) {
+    const [y, m] = s.on.split('-');
+    const k = `${y} оны ${Number(m)}-р сар`;
+    groups.set(k, [...(groups.get(k) ?? []), s]);
+  }
 
   return (
     <div className="space-y-3">
@@ -99,55 +110,133 @@ export function YogaSchedule({
         </Card>
       )}
 
-      <Card className="py-0">
-        <CardContent className="p-0">
-          <ul className="divide-border divide-y">
-            {data.sessions.map((s) => {
-              const d = new Date(`${s.on}T00:00:00`);
-              return (
-                <li key={s.on}>
-                  <button
-                    type="button"
-                    onClick={() => setOpen(s.on)}
-                    className={cn(
-                      'hover:bg-muted/50 flex w-full flex-wrap items-center gap-3 px-4 py-2.5 text-left transition-colors',
-                      s.isToday && 'bg-emerald-500/5',
-                    )}
-                  >
-                    <span className="font-mono text-sm tabular-nums">{s.on}</span>
-                    <span className="text-muted-foreground text-xs">
-                      {WEEKDAY_FULL[d.getDay()]}
-                    </span>
-                    {s.isToday && (
-                      <span className="rounded bg-emerald-500/15 px-1.5 py-0.5 text-[10px] font-medium text-emerald-700 dark:text-emerald-400">
-                        Өнөөдөр
-                      </span>
-                    )}
-                    <span className="flex-1" />
-                    {/*
-                      ⚠ Ирээдүйн оролт дээр «0 ирсэн» гэж УЛААНААР
-                      харуулбал ажилтныг дэмий сандраана — тэнд хараахан
-                      хэн ч ирэх ёсгүй.
-                    */}
-                    <span
-                      className={cn(
-                        'text-xs tabular-nums',
-                        !s.past && !s.isToday
-                          ? 'text-muted-foreground/50'
-                          : s.attended === 0
-                            ? 'text-muted-foreground'
-                            : 'text-emerald-600 dark:text-emerald-400',
-                      )}
-                    >
-                      {s.attended}/{data.enrolled} ирсэн
-                    </span>
-                  </button>
-                </li>
-              );
-            })}
-          </ul>
-        </CardContent>
-      </Card>
+      {/*
+        ★ ЯВЦЫН МӨР — анги хаана явж байгааг НЭГ ХАРЦААР
+        «13 оролтын 4 нь болсон» гэдгийг огноог тоолж мэдэх ёсгүй.
+      */}
+      <div className="flex items-center gap-3 text-xs">
+        <div className="bg-muted h-1.5 flex-1 overflow-hidden rounded-full">
+          <div
+            className="bg-primary h-full rounded-full transition-all"
+            style={{
+              width: `${data.sessions.length ? (done / data.sessions.length) * 100 : 0}%`,
+            }}
+          />
+        </div>
+        <span className="text-muted-foreground shrink-0 tabular-nums">
+          {done} / {data.sessions.length} оролт
+        </span>
+      </div>
+
+      {/*
+        Сараар бүлэглэнэ — 13 огноо нэг цувралаар байвал «10-р сар
+        хэдээс эхлэх вэ» гэдгийг нүдээр гүйлгэж хайна.
+      */}
+      {[...groups.entries()].map(([month, list]) => (
+        <div key={month} className="space-y-1.5">
+          <p className="text-muted-foreground px-1 text-xs font-medium">
+            {month}
+          </p>
+          <Card className="py-0">
+            <CardContent className="p-0">
+              <ul className="divide-border divide-y">
+                {list.map((s) => {
+                  const d = new Date(`${s.on}T00:00:00`);
+                  const full = data.enrolled > 0 && s.attended >= data.enrolled;
+                  return (
+                    <li key={s.on}>
+                      <button
+                        type="button"
+                        onClick={() => setOpen(s.on)}
+                        className={cn(
+                          'flex w-full flex-wrap items-center gap-3 px-4 py-2.5 text-left transition-colors',
+                          s.isToday
+                            ? 'bg-emerald-500/10 hover:bg-emerald-500/15'
+                            : 'hover:bg-muted/50',
+                          // Өнгөрсөн нь бүдгэрнэ — анхаарал ирээдүй рүү.
+                          s.past && 'opacity-60',
+                        )}
+                      >
+                        {/*
+                          ★ ЗҮҮН ТАЛЫН ТЭМДЭГ — төлвийг өнгө, дүрсээр нэг
+                          зэрэг хэлнэ. Зөвхөн өнгө ашиглавал өнгө ялгах
+                          бэрхшээлтэй хүн ялгаж чадахгүй.
+                        */}
+                        <span
+                          className={cn(
+                            'flex size-7 shrink-0 items-center justify-center rounded-full',
+                            s.isToday
+                              ? 'bg-emerald-500 text-white'
+                              : s.past
+                                ? 'bg-muted text-muted-foreground'
+                                : 'border-muted-foreground/30 text-muted-foreground border border-dashed',
+                          )}
+                        >
+                          {s.isToday ? (
+                            <DoorOpen className="size-3.5" />
+                          ) : s.past ? (
+                            <Check className="size-3.5" />
+                          ) : (
+                            <span className="text-[10px] font-medium tabular-nums">
+                              {d.getDate()}
+                            </span>
+                          )}
+                        </span>
+
+                        <span className="min-w-0">
+                          <span
+                            className={cn(
+                              'block font-mono text-sm tabular-nums',
+                              s.isToday && 'font-semibold',
+                            )}
+                          >
+                            {s.on}
+                          </span>
+                          <span className="text-muted-foreground block text-xs">
+                            {WEEKDAY_FULL[d.getDay()]} · {hhmm(data.startTime)}
+                          </span>
+                        </span>
+
+                        {s.isToday && (
+                          <span className="rounded bg-emerald-500 px-1.5 py-0.5 text-[10px] font-semibold text-white">
+                            ӨНӨӨДӨР
+                          </span>
+                        )}
+
+                        <span className="flex-1" />
+
+                        {/*
+                          ⚠ ИРЭЭДҮЙН оролт дээр тоо ХАРУУЛАХГҮЙ. «0/3
+                          ирсэн» гэвэл асуудал мэт харагдана — тэнд
+                          хараахан хэн ч ирэх ёсгүй.
+                        */}
+                        {s.past || s.isToday ? (
+                          <span
+                            className={cn(
+                              'text-xs tabular-nums',
+                              full
+                                ? 'font-medium text-emerald-600 dark:text-emerald-400'
+                                : s.attended > 0
+                                  ? 'text-amber-600 dark:text-amber-400'
+                                  : 'text-muted-foreground',
+                            )}
+                          >
+                            {s.attended}/{data.enrolled} ирсэн
+                          </span>
+                        ) : (
+                          <span className="text-muted-foreground/60 text-xs">
+                            хараахан болоогүй
+                          </span>
+                        )}
+                      </button>
+                    </li>
+                  );
+                })}
+              </ul>
+            </CardContent>
+          </Card>
+        </div>
+      ))}
 
       {open && (
         <SessionDialog
@@ -175,6 +264,14 @@ export function YogaSchedule({
  *
  * ⚠ Терминал унасан ч ирц БҮРТГЭГДЭНЭ — хариу нь хаалга нээгдсэн
  * эсэхийг тусад нь хэлэх ба бид түүнийг ил харуулна.
+ *
+ * ★ ОЛОН ХҮНТЭЙ АНГИД ЗОРИУЛСАН
+ *
+ * 20-30 хүнтэй ангид зүгээр жагсаалт нь ажиллахгүй: ресепшн нэг
+ * хүнийг олохын тулд гүйлгэж хайна. Тиймээс:
+ *   • хайлт (нэр, утас)
+ *   • шүүлт: Ирээгүй / Ирсэн — хаалган дээр «хэн үлдсэн» нь гол асуулт
+ *   • ирээгүй хүн ДЭЭГҮҮР — дараагийн ажил эхэнд байна
  */
 function SessionDialog({
   courseId,
@@ -190,6 +287,9 @@ function SessionDialog({
   onDone: () => void;
 }) {
   const [busy, setBusy] = useState<string | null>(null);
+  const [search, setSearch] = useState('');
+  const [only, setOnly] = useState<'all' | 'here' | 'away'>('all');
+
   const { data, reload } = useApi<{
     on: string;
     present: number;
@@ -201,9 +301,7 @@ function SessionDialog({
     setBusy(p.id);
     try {
       if (p.here) {
-        await api.del(
-          `/yoga/courses/${courseId}/attendance/${p.id}/${on}`,
-        );
+        await api.del(`/yoga/courses/${courseId}/attendance/${p.id}/${on}`);
         toast.success(`${p.name} — ирц буцаав`);
       } else {
         const r = await api.post<{ door: { opened: boolean; error?: string } }>(
@@ -225,26 +323,83 @@ function SessionDialog({
     }
   }
 
+  const people = data?.people ?? [];
+  const t = search.trim().toLowerCase();
+  const shown = people
+    .filter((p) => (only === 'all' ? true : only === 'here' ? p.here : !p.here))
+    .filter(
+      (p) => !t || p.name.toLowerCase().includes(t) || (p.phone ?? '').includes(t),
+    )
+    /*
+     * Ирээгүй хүн ДЭЭГҮҮР. Хаалган дээрх дараагийн ажил бол ирээгүй
+     * хүнийг оруулах — ирсэн хүмүүс дээр гүйлгэх шаардлагагүй.
+     */
+    .sort((a, b) => Number(a.here) - Number(b.here) || a.name.localeCompare(b.name));
+
+  const away = people.length - (data?.present ?? 0);
+
   return (
     <Dialog open onOpenChange={(v) => !v && onClose()}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="sm:max-w-lg">
         <DialogHeader>
           <DialogTitle>Ирц · {on}</DialogTitle>
           <DialogDescription>
-            {hhmm(startTime)} · {data ? `${data.present}/${data.total} ирсэн` : '…'}
-            {' · '}Тэмдэглэхэд хаалга нээгдэнэ
+            {hhmm(startTime)} · Тэмдэглэхэд хаалга нээгдэнэ
           </DialogDescription>
         </DialogHeader>
 
-        <div className="max-h-80 space-y-1.5 overflow-y-auto">
+        {/* ── Товч тоо + шүүлт ── */}
+        <div className="flex flex-wrap items-center gap-2">
+          {(
+            [
+              ['all', `Бүгд ${people.length}`],
+              ['away', `Ирээгүй ${away}`],
+              ['here', `Ирсэн ${data?.present ?? 0}`],
+            ] as const
+          ).map(([k, label]) => (
+            <button
+              key={k}
+              type="button"
+              onClick={() => setOnly(k)}
+              className={cn(
+                'rounded-md border px-2.5 py-1 text-xs transition-colors',
+                only === k
+                  ? 'bg-primary text-primary-foreground border-primary font-medium'
+                  : 'hover:bg-muted',
+              )}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+
+        {people.length > 6 && (
+          <div className="relative">
+            <Search className="text-muted-foreground pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2" />
+            <Input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Нэр, утсаар хайх…"
+              className="pl-9"
+            />
+          </div>
+        )}
+
+        {/*
+          ⚠ Тогтмол өндөртэй, ДОТРОО гүйнэ. Цонх нь агуулгаараа өсвөл
+          30 хүнтэй ангид дэлгэцээс халина.
+        */}
+        <div className="h-[22rem] space-y-1.5 overflow-y-auto pr-1">
           {!data ? (
-            <Skeleton className="h-32 w-full" />
-          ) : data.people.length === 0 ? (
-            <p className="text-muted-foreground py-8 text-center text-sm">
-              Энэ ангид гишүүн алга
+            <Skeleton className="h-40 w-full" />
+          ) : shown.length === 0 ? (
+            <p className="text-muted-foreground py-10 text-center text-sm">
+              {people.length === 0
+                ? 'Энэ ангид гишүүн алга'
+                : 'Шүүлтэд тохирох хүн алга'}
             </p>
           ) : (
-            data.people.map((p) => (
+            shown.map((p) => (
               <div
                 key={p.id}
                 className={cn(
@@ -258,7 +413,11 @@ function SessionDialog({
                   </span>
                   <span className="text-muted-foreground block truncate text-xs">
                     {p.phone ?? 'утасгүй'}
-                    {p.owed > 0 && ' · ⚠ үлдэгдэлтэй'}
+                    {p.owed > 0 && (
+                      <span className="text-amber-600 dark:text-amber-400">
+                        {' · ⚠ үлдэгдэлтэй'}
+                      </span>
+                    )}
                   </span>
                 </span>
                 <Button
@@ -266,6 +425,7 @@ function SessionDialog({
                   variant={p.here ? 'ghost' : 'default'}
                   disabled={busy !== null}
                   onClick={() => void toggle(p)}
+                  className="shrink-0"
                 >
                   {busy === p.id ? (
                     <Loader2 className="size-3.5 animate-spin" />
