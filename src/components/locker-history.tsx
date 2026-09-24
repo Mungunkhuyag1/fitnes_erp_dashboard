@@ -1,11 +1,15 @@
 'use client';
 
 import { Bell, KeyRound, Search } from 'lucide-react';
-import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { toast } from 'sonner';
 import { errorToast } from '@/lib/errors';
 import { DataTable, type Column } from '@/components/data-table';
+import {
+  duration,
+  LockerDetail,
+  type LockerDetailData,
+} from '@/components/locker-detail';
 import { EmptyState } from '@/components/empty-state';
 import { FilterSelect, type FilterOption } from '@/components/filter-select';
 import { Badge } from '@/components/ui/badge';
@@ -34,6 +38,11 @@ interface Assignment {
   note: string | null;
 }
 
+/** Хүснэгтийн мөрийг нийтлэг цонхны хэлбэрт буулгана. */
+function toDetail(a: Assignment): LockerDetailData {
+  return { ...a, assignmentId: a.id };
+}
+
 const TYPE_FILTERS: FilterOption[] = [
   { value: '', label: 'Бүх төрөл' },
   { value: 'daily', label: 'Өдрийн' },
@@ -47,21 +56,6 @@ const STATE_FILTERS: FilterOption[] = [
   { value: 'overdue', label: 'Хугацаа хэтэрсэн', dot: 'bg-destructive' },
 ];
 
-/** «3 цаг 20 мин» — түлхүүр хэр удаан гарсан бэ. */
-function duration(fromIso: string, toIso: string | null): string {
-  const min = Math.max(
-    0,
-    Math.round(
-      ((toIso ? new Date(toIso).getTime() : Date.now()) -
-        new Date(fromIso).getTime()) /
-        60_000,
-    ),
-  );
-  if (min < 60) return `${min} мин`;
-  const h = Math.floor(min / 60);
-  if (h < 24) return min % 60 ? `${h} ц ${min % 60} мин` : `${h} цаг`;
-  return `${Math.floor(h / 24)} хоног`;
-}
 
 /**
  * Түлхүүр олголтын бүрэн түүх.
@@ -71,7 +65,6 @@ function duration(fromIso: string, toIso: string | null): string {
  * хэрэгтэй — backend-д эндпойнт байсан ч дэлгэц байгаагүй.
  */
 export function LockerHistory() {
-  const router = useRouter();
   const { can } = useAuth();
   const [type, setType] = useState('');
   const [state, setState] = useState('');
@@ -79,6 +72,8 @@ export function LockerHistory() {
   const table = useTableState({ key: 'issuedAt', dir: 'DESC' });
   const { setPage } = table;
   const [reminding, setReminding] = useState<string | null>(null);
+  /** Дарсан мөр — дэлгэрэнгүй цонхонд. */
+  const [row, setRow] = useState<Assignment | null>(null);
 
   const set = table.onFilter;
 
@@ -259,7 +254,13 @@ export function LockerHistory() {
         loading={loading}
         error={error}
         rowKey={(a) => a.id}
-        onRowClick={(a) => router.push(`/members/${a.memberId}`)}
+        /*
+          ⚠ ШУУД гишүүн рүү үсрэхгүй. Түлхүүрийн мөрөнд маргаан
+          шийдэхэд хэрэгтэй мэдээлэл (хэзээ авсан, хэр удсан, хэдийг
+          төлсөн, тэмдэглэл) агуулагддаг ба утсан дээр багана нь
+          нуугддаг. Шууд үсэрвэл тэр бүхнийг харах газар байхгүй болно.
+        */
+        onRowClick={setRow}
         onPageChange={setPage}
         sort={table.sort}
         onSortChange={table.setSort}
@@ -280,6 +281,13 @@ export function LockerHistory() {
             }
           />
         }
+      />
+
+      <LockerDetail
+        row={row && toDetail(row)}
+        onClose={() => setRow(null)}
+        onDone={reload}
+        canRemind={can('manager')}
       />
     </div>
   );

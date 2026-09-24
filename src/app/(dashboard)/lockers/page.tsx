@@ -1,9 +1,13 @@
 "use client";
 
-import { KeyRound, Loader2, Plus, RotateCcw } from "lucide-react";
+import { Bell, KeyRound, Loader2, Plus, RotateCcw } from "lucide-react";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import { LockerHistory } from "@/components/locker-history";
+import {
+  LockerDetail,
+  type LockerDetailData,
+} from "@/components/locker-detail";
 import { LockerIssueDialog } from "@/components/locker-issue-dialog";
 import { PageHeader } from "@/components/page-header";
 import { StatCard } from "@/components/stat-card";
@@ -28,6 +32,8 @@ import {
 } from "@/components/ui/tooltip";
 import { useApi } from "@/hooks/use-api";
 import { api } from "@/lib/api";
+import { useAuth } from "@/lib/auth";
+import { errorToast } from "@/lib/errors";
 import { date, dateTime, relative } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
@@ -45,6 +51,31 @@ interface LockerCell {
   issuedAt: string | null;
   dueAt: string | null;
   note: string | null;
+}
+
+/**
+ * Самбарын нүдийг нийтлэг дэлгэрэнгүй цонхны хэлбэрт буулгана.
+ *
+ * ⚠ Самбар нь ОДООГИЙН байдлыг л мэднэ: дүн, тэмдэглэл, буцаасан
+ * огноо нь түүхэнд байдаг. Тиймээс эдгээрийг `null` гэж өгнө —
+ * цонх байхгүй талбарыг огт харуулахгүй.
+ */
+function toDetail(zone: string, c: LockerCell): LockerDetailData {
+  return {
+    assignmentId: c.assignmentId,
+    zone,
+    number: c.number,
+    type: c.status === "daily" ? "daily" : "rental",
+    memberId: c.memberId,
+    memberName: c.memberName,
+    memberNo: c.memberNo,
+    issuedAt: c.issuedAt,
+    dueAt: c.dueAt,
+    returnedAt: null,
+    amount: null,
+    overdue: c.status === "overdue",
+    note: c.note,
+  };
 }
 
 type View = "board" | "history";
@@ -126,6 +157,7 @@ const LEGEND: { status: Status; label: string }[] = [
 ];
 
 export default function LockersPage() {
+  const { can } = useAuth();
   const {
     data: board,
     loading,
@@ -161,6 +193,10 @@ export default function LockersPage() {
     zone: string;
     number: number;
   } | null>(null);
+  /** Дарсан шүүгээ — дэлгэрэнгүй цонхонд. */
+  const [detail, setDetail] = useState<LockerDetailData | null>(null);
+  /** Сануулга илгээж буй олголт. */
+  const [reminding, setReminding] = useState<string | null>(null);
   const [returning, setReturning] = useState<{
     zone: string;
     cell: LockerCell;
@@ -215,6 +251,28 @@ export default function LockersPage() {
       toast.error(err instanceof Error ? err.message : "Алдаа гарлаа");
     } finally {
       setBusy(false);
+    }
+  }
+
+  async function remind(zone: string, cell: LockerCell) {
+    if (!cell.assignmentId) return;
+    setReminding(cell.assignmentId);
+    try {
+      const r = await api.post<{ queued: boolean; reason?: string }>(
+        `/locker-assignments/${cell.assignmentId}/remind`,
+      );
+      if (r.queued) {
+        toast.success(`${cell.memberName ?? "Гишүүн"} рүү сануулга илгээв`, {
+          description: `${zone} №${cell.number} шүүгээ`,
+        });
+      } else {
+        // Картгүй гишүүнд push хүрэх газар байхгүй — залгах хэрэгтэй.
+        toast.warning("Илгээгдсэнгүй", { description: r.reason });
+      }
+    } catch (e) {
+      errorToast(e, "Алдаа гарлаа");
+    } finally {
+      setReminding(null);
     }
   }
 
@@ -382,9 +440,24 @@ export default function LockersPage() {
                           (c) => c.status !== "free" && c.status !== "disabled",
                         )
                         .map((c) => (
+                          /*
+                            ⚠ Мөр бүхэлдээ ДАРАГДАНА. Ресепшний эхний
+                            асуулт «энэ хэн бэ» байдаг ба нэр нь энд
+                            багтахгүй бол таслагдана. Дэлгэрэнгүй цонх
+                            бүтэн мэдээллийг өгч, гишүүн рүү нь хүргэнэ.
+                          */
                           <li
                             key={c.id}
-                            className="flex flex-wrap items-center gap-3 px-4 py-2.5"
+                            role="button"
+                            tabIndex={0}
+                            onClick={() => setDetail(toDetail(z.zone, c))}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter' || e.key === ' ') {
+                                e.preventDefault();
+                                setDetail(toDetail(z.zone, c));
+                              }
+                            }}
+                            className="hover:bg-muted/50 flex cursor-pointer flex-wrap items-center gap-3 px-4 py-2.5 transition-colors"
                           >
                             <KeyRound
                               className={cn(
@@ -409,12 +482,35 @@ export default function LockersPage() {
                                   ? `хэтэрсэн · ${date(c.dueAt)}`
                                   : `${date(c.dueAt)} хүртэл`}
                             </span>
+                            {/*
+                              ⚠ `stopPropagation` — эс бөгөөс товч дарахад
+                              мөрийн дэлгэрэнгүй цонх ч зэрэг нээгдэнэ.
+                            */}
+                            {can("manager") && c.assignmentId && (
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                disabled={reminding === c.assignmentId}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  void remind(z.zone, c);
+                                }}
+                              >
+                                {reminding === c.assignmentId ? (
+                                  <Loader2 className="size-3.5 animate-spin" />
+                                ) : (
+                                  <Bell className="size-3.5" />
+                                )}
+                                Сануулах
+                              </Button>
+                            )}
                             <Button
                               size="sm"
                               variant="outline"
-                              onClick={() =>
-                                setReturning({ zone: z.zone, cell: c })
-                              }
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setReturning({ zone: z.zone, cell: c });
+                              }}
                             >
                               <RotateCcw className="size-3.5" />
                               Буцаах
@@ -443,6 +539,25 @@ export default function LockersPage() {
         defaultNumber={issueTarget?.number}
         rentalPrice={settings?.locker_price_per_month ?? 30000}
         onDone={refresh}
+      />
+
+      {/*
+        ⚠ «Буцаах» дархад энэ цонх ХААГДАНА, дараа нь баталгаажуулах
+        цонх нээгдэнэ — хоёр цонх давхарлавал аль нь идэвхтэйг ойлгоход
+        хэцүү болно.
+      */}
+      <LockerDetail
+        row={detail}
+        onClose={() => setDetail(null)}
+        onDone={reload}
+        canRemind={can("manager")}
+        onReturn={(r) => {
+          const cell = board?.zones
+            .find((z) => z.zone === r.zone)
+            ?.items.find((c) => c.number === r.number);
+          setDetail(null);
+          if (cell) setReturning({ zone: r.zone, cell });
+        }}
       />
 
       <AlertDialog
