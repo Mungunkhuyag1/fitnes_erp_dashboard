@@ -373,30 +373,37 @@ function SessionDialog({
           ))}
         </div>
 
-        {people.length > 6 && (
-          <div className="relative">
-            <Search className="text-muted-foreground pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2" />
-            <Input
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="Нэр, утсаар хайх…"
-              className="pl-9"
-            />
-          </div>
-        )}
+        {/*
+          ⚠ ҮРГЭЛЖ харагдана, «олон хүнтэй үед» гэж нуухгүй. Ресепшн
+          хаалган дээр яаралтай ажилладаг: талбар байгаа эсэхийг
+          бодох биш, шууд бичиж эхлэх ёстой.
+        */}
+        <div className="relative">
+          <Search className="text-muted-foreground pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2" />
+          <Input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Гишүүний нэр, утсаар хайх…"
+            className="pl-9"
+            autoFocus
+          />
+        </div>
 
         {/*
-          ⚠ Тогтмол өндөртэй, ДОТРОО гүйнэ. Цонх нь агуулгаараа өсвөл
-          30 хүнтэй ангид дэлгэцээс халина.
+          ⚠ `max-h` — ДЭЭД хязгаартай ч агуулгаараа өснө. Тогтмол
+          өндөр байсан тул 1-2 хүнтэй ангид цонхны хагас нь хоосон
+          зайгаар дүүрдэг байв. 30 хүнтэй бол дотроо гүйнэ.
         */}
-        <div className="h-[22rem] space-y-1.5 overflow-y-auto pr-1">
+        <div className="max-h-[22rem] min-h-24 space-y-1.5 overflow-y-auto pr-1">
           {!data ? (
             <Skeleton className="h-40 w-full" />
           ) : shown.length === 0 ? (
             <p className="text-muted-foreground py-10 text-center text-sm">
               {people.length === 0
                 ? 'Энэ ангид гишүүн алга'
-                : 'Шүүлтэд тохирох хүн алга'}
+                : t
+                  ? `«${search.trim()}» олдсонгүй`
+                  : 'Шүүлтэд тохирох хүн алга'}
             </p>
           ) : (
             shown.map((p) => (
