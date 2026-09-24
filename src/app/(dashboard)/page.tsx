@@ -56,6 +56,13 @@ interface Dash {
     locker: number;
     total: number;
   };
+  /**
+   * Цуглуулаагүй мөнгө — «дараа төлөх»-өөр зарсан эрх.
+   *
+   * ⚠ Орлогод ОРООГҮЙ. Хоёрыг нэмбэл кассанд байгаа мөнгөтэй таарахаа
+   * болино.
+   */
+  receivable: { amount: number; members: number };
   sync: { memberErrors: number; outboxFailed: number; outboxPending: number };
   devices: {
     id: string;
@@ -454,11 +461,22 @@ export default function HomePage() {
           <StatCard
             label="Өнөөдрийн орлого"
             value={money(d.revenueToday.total)}
-            sub={`Бэлэн ${money(d.revenueToday.cash)} · Онлайн ${money(d.revenueToday.bonum)}`}
+            /*
+              ⚠ Авлага байвал ЭНД сануулна. Ажилтан «өнөөдөр 300 мянга
+              орлоо» гэж хараад тайван болох ч 250 мянга нь аваагүй
+              байж болно — тэр мөнгө мартагдвал хэзээ ч цуглуулагдахгүй.
+            */
+            sub={
+              d.receivable.amount
+                ? `Бэлэн ${money(d.revenueToday.cash)} · ⚠ Авлага ${money(d.receivable.amount)}`
+                : `Бэлэн ${money(d.revenueToday.cash)} · Онлайн ${money(d.revenueToday.bonum)}`
+            }
             delta={d.period.revenueDelta}
             footL={shortLabel}
             footR={money(d.period.revenue)}
-            onClick={() => router.push("/reports")}
+            onClick={() =>
+              router.push(d.receivable.amount ? "/invoices" : "/reports")
+            }
           />
           <StatCard
             label="Идэвхтэй гишүүн"

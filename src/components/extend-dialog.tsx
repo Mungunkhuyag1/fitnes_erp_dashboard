@@ -12,6 +12,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useApi } from "@/hooks/use-api";
@@ -72,6 +73,14 @@ export function ExtendDialog({
   const [pkgId, setPkgId] = useState<string | null>(null);
   const [customDays, setCustomDays] = useState("");
   const [amount, setAmount] = useState("");
+  /**
+   * Мөнгийг ХОЖИМ авна — эрх нь одоо нээгдэнэ.
+   *
+   * Ресепшн дээр «мөнгөө маргааш авчирна» гэх нь олонтаа. Үүнгүй бол
+   * ажилтны сонголт хоёулаа буруу: бүртгэвэл аваагүй мөнгө орлогод
+   * орно, бүртгэхгүй бол гишүүн зааланд орж чадахгүй.
+   */
+  const [payLater, setPayLater] = useState(false);
   const [reason, setReason] = useState("");
   /** Хосын багцын хамтрагч — `seats > 1` үед ЗААВАЛ. */
   const [partnerId, setPartnerId] = useState<string | null>(null);
@@ -108,18 +117,22 @@ export function ExtendDialog({
         days: custom ? Number(customDays) : undefined,
         amount: Number(amount || 0),
         method: custom ? "manual" : "cash",
+        payLater: payLater || undefined,
         reason: reason || undefined,
         partnerMemberId: partnerId ?? undefined,
         idempotencyKey: idemKey,
       });
       toast.success("Эрх сунгагдлаа", {
-        description: "Терминал руу автоматаар бичигдэнэ",
+        description: payLater
+          ? `Авлага ${Number(amount || 0).toLocaleString()}₮ — Төлбөр дэлгэцээс барагдуулна`
+          : "Терминал руу автоматаар бичигдэнэ",
       });
       onOpenChange(false);
       setMode("package");
       setPkgId(null);
       setCustomDays("");
       setAmount("");
+      setPayLater(false);
       setReason("");
       onDone();
     } catch (err) {
@@ -267,6 +280,31 @@ export function ExtendDialog({
                 />
               </div>
             )}
+
+            {/*
+              ★ ДАРАА ТӨЛӨХ
+
+              ⚠ Дүнг ТЭГЛЭХГҮЙ — тэр нь төлөх ЁСТОЙ дүн хэвээр.
+              Тэглэвэл хэдийг авахаа мартах ба авлагын жагсаалт
+              утгагүй болно.
+            */}
+            <label className="hover:bg-muted/50 flex cursor-pointer items-start gap-3 rounded-lg border p-3 transition-colors">
+              <Checkbox
+                checked={payLater}
+                onCheckedChange={(v) => setPayLater(v === true)}
+                className="mt-0.5"
+              />
+              <span className="min-w-0 flex-1">
+                <span className="block text-sm font-medium">
+                  Төлбөрийг дараа авах
+                </span>
+                <span className="text-muted-foreground block text-xs">
+                  {payLater
+                    ? `Эрх нь ОДОО нээгдэнэ. ${Number(amount || 0).toLocaleString()}₮ авлага болж бүртгэгдэнэ — орлогод орохгүй.`
+                    : "Мөнгө хараахан аваагүй бол сонгоно уу."}
+                </span>
+              </span>
+            </label>
 
             {/* ── Хосын багц: хамтрагч ЗААВАЛ ── */}
             {(selected?.seats ?? 1) > 1 && (

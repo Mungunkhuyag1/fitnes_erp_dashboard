@@ -1,6 +1,6 @@
 'use client';
 
-import { Search } from 'lucide-react';
+import { Loader2, Search, Wallet } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useMemo, useState } from 'react';
 import { DataTable, type Column } from '@/components/data-table';
@@ -21,7 +21,9 @@ import { useApi } from '@/hooks/use-api';
 import { useTableState } from '@/hooks/use-table-state';
 import { useDebounce } from '@/hooks/use-debounce';
 import { useNow } from '@/hooks/use-now';
-import { qs, type Page } from '@/lib/api';
+import { toast } from 'sonner';
+import { api, qs, type Page } from '@/lib/api';
+import { errorToast } from '@/lib/errors';
 import { dateTime, money, relative } from '@/lib/format';
 import { cn } from '@/lib/utils';
 
@@ -46,13 +48,36 @@ interface InvoiceRow {
   days: number;
   amount: number;
   status: 'pending' | 'paid' | 'expired' | 'cancelled';
+  /** `bonum` (онлайн) · `cash` · `manual`. */
   provider: string;
-  transactionId: string;
+  transactionId: string | null;
   payUrl: string | null;
   paidAt: string | null;
-  expiresAt: string;
+  /** Гараар бүртгэсэн мөрөнд утгагүй — хугацаа дуусдаггүй. */
+  expiresAt: string | null;
   createdAt: string;
+  /**
+   * Мөр ХААНААС гарсан бэ.
+   *
+   * ⚠ Онлайн нэхэмжлэх 5 минутын дараа ӨӨРӨӨ хаагддаг; гараар
+   * бүртгэсэн авлага нь хүн мөнгө авах хүртэл хүлээнэ. Хоёуланг нь
+   * «хүлээгдэж буй» гэж нэг адил харуулбал авлага хэзээ ч цуглуулагдахгүй.
+   */
+  kind: 'invoice' | 'membership';
 }
+
+/** Төлбөр ЯМАР сувгаар орсон бэ. */
+const CHANNEL: Record<string, { label: string; tone: string }> = {
+  bonum: { label: 'Онлайн', tone: 'bg-sky-500/10 text-sky-600 dark:text-sky-400' },
+  cash: {
+    label: 'Бэлэн',
+    tone: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400',
+  },
+  manual: {
+    label: 'Гараар',
+    tone: 'bg-muted text-muted-foreground',
+  },
+};
 
 /** Дэлгэрэнгүй цонхны нэг мөр. */
 function Row({
@@ -154,7 +179,7 @@ export default function InvoicesPage() {
       })}`,
     [q, status, packageId, table.params],
   );
-  const { data, loading, error } = useApi<Page<InvoiceRow>>(path);
+  const { data, loading, error, reload } = useApi<Page<InvoiceRow>>(path);
 
   const packageFilters: FilterOption[] = [
     { value: '', label: 'Багц — бүгд' },
@@ -168,14 +193,47 @@ export default function InvoicesPage() {
 
   // Одоогийн ХУУДСАН дээрх дүн — нийт биш. Хуудаслалттай жагсаалтад
   // «нийт төлөгдсөн дүн» гэж бичвэл ажилтныг төөрөгдүүлнэ.
+  /** Авлага барагдуулж буй мөр. */
+  const [paying, setPaying] = useState<string | null>(null);
+
+  async function markPaid(i: InvoiceRow) {
+    setPaying(i.id);
+    try {
+      await api.post(`/memberships/${i.id}/pay`);
+      toast.success(`${money(i.amount)} хүлээн авав`, {
+        description: i.memberName ?? undefined,
+      });
+      reload();
+    } catch (e) {
+      errorToast(e, 'Алдаа гарлаа');
+    } finally {
+      setPaying(null);
+    }
+  }
+
   const pageTotals = useMemo(() => {
     const items = data?.items ?? [];
     const sum = (s: InvoiceRow['status']) =>
       items.filter((i) => i.status === s).reduce((a, b) => a + b.amount, 0);
+    /*
+     * ⚠ «Хүлээгдэж буй»-г ХОЁР хуваана. Онлайн нэхэмжлэх нь 5 минутын
+     * дараа өөрөө хаагддаг тул анхаарал шаардахгүй; авлага нь хүн
+     * очиж мөнгө авах хүртэл хэвтэнэ. Нэг тоо болговол авлага
+     * нэхэмжлэхийн чимээнд алдагдана.
+     */
+    const owed = items.filter(
+      (i) => i.status === 'pending' && i.kind === 'membership',
+    );
     return {
-      pending: items.filter((i) => i.status === 'pending').length,
-      pendingAmount: sum('pending'),
+      pending: items.filter(
+        (i) => i.status === 'pending' && i.kind === 'invoice',
+      ).length,
+      pendingAmount: items
+        .filter((i) => i.status === 'pending' && i.kind === 'invoice')
+        .reduce((a, b) => a + b.amount, 0),
       paidAmount: sum('paid'),
+      owedCount: owed.length,
+      owedAmount: owed.reduce((a, b) => a + b.amount, 0),
     };
   }, [data]);
 
@@ -218,27 +276,63 @@ export default function InvoicesPage() {
       ),
     },
     {
+      key: 'channel',
+      header: 'Суваг',
+      cell: (i) => {
+        const c = CHANNEL[i.provider] ?? {
+          label: i.provider,
+          tone: 'bg-muted text-muted-foreground',
+        };
+        return (
+          <span
+            className={cn(
+              'inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium',
+              c.tone,
+            )}
+          >
+            {c.label}
+          </span>
+        );
+      },
+      hideOnMobile: true,
+    },
+    {
       key: 'status',
       header: 'Төлөв',
       sortKey: 'status',
-      cell: (i) => (
-        <span
-          className={cn(
-            'inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium',
-            STATUS[i.status].tone,
-          )}
-        >
-          {STATUS[i.status].label}
-        </span>
-      ),
+      cell: (i) =>
+        /*
+          ⚠ Гараар бүртгэсэн «хүлээгдэж буй» нь АВЛАГА — хэн нэгэн
+          очиж мөнгө авах ёстой. Онлайн нэхэмжлэхийн «хүлээгдэж буй»
+          нь өөрөө хаагдана. Нэг шошготой байвал ялгагдахгүй.
+        */
+        i.status === 'pending' && i.kind === 'membership' ? (
+          <span className="inline-flex items-center rounded-md bg-amber-500/10 px-2 py-0.5 text-xs font-medium text-amber-700 dark:text-amber-400">
+            Авлага
+          </span>
+        ) : (
+          <span
+            className={cn(
+              'inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium',
+              STATUS[i.status].tone,
+            )}
+          >
+            {STATUS[i.status].label}
+          </span>
+        ),
     },
     {
       key: 'left',
       header: 'Үлдсэн хугацаа',
       cell: (i) =>
-        i.status === 'pending' ? (
+        // Countdown нь ЗӨВХӨН нэхэмжлэхэд — авлага хугацаа дуусдаггүй.
+        i.status === 'pending' && i.kind === 'invoice' && i.expiresAt ? (
           <span className="text-sm">
             <Countdown expiresAt={i.expiresAt} />
+          </span>
+        ) : i.status === 'pending' ? (
+          <span className="text-muted-foreground text-xs">
+            Мөнгө хүлээгдэж байна
           </span>
         ) : i.paidAt ? (
           // Төлөгдсөн бол «үлдсэн хугацаа» гэж юу ч байхгүй — хэзээ
@@ -250,6 +344,32 @@ export default function InvoicesPage() {
           <span className="text-muted-foreground text-xs">—</span>
         ),
       hideOnMobile: true,
+    },
+    {
+      key: 'act',
+      header: '',
+      cell: (i) =>
+        // Зөвхөн АВЛАГА дээр. Онлайн нэхэмжлэхийг гараар «төлөгдсөн»
+        // болгох нь өөр урсгал (баримт шалгах) бөгөөд энд байх ёсгүй.
+        i.status === 'pending' && i.kind === 'membership' ? (
+          <Button
+            size="sm"
+            variant="outline"
+            disabled={paying !== null}
+            onClick={(e) => {
+              e.stopPropagation();
+              void markPaid(i);
+            }}
+          >
+            {paying === i.id ? (
+              <Loader2 className="size-3.5 animate-spin" />
+            ) : (
+              <Wallet className="size-3.5" />
+            )}
+            Төлбөр авах
+          </Button>
+        ) : null,
+      className: 'w-36 text-right',
     },
     {
       key: 'created',
@@ -279,12 +399,12 @@ export default function InvoicesPage() {
     <div className="flex flex-col gap-5">
       <PageHeader
         title="Төлбөр"
-        description="Онлайн нэхэмжлэх ба гүйлгээний түүх"
+        description="Онлайн, бэлэн, гараар — бүх төлбөр"
       />
 
       <AwaitingApprovalCard />
 
-      <div className="grid gap-4 sm:grid-cols-3">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <StatCard
           label="Хүлээгдэж буй"
           value={pageTotals.pending}
@@ -299,6 +419,20 @@ export default function InvoicesPage() {
           label="Төлөгдсөн"
           value={money(pageTotals.paidAmount)}
           sub="Энэ хуудсан дээрх"
+        />
+        {/*
+          ⚠ АВЛАГА нь «хүлээгдэж буй»-гаас ТУСДАА. Онлайн нэхэмжлэх
+          өөрөө хаагддаг тул анхаарал шаардахгүй; авлага нь хүн очиж
+          мөнгө авах хүртэл хэвтэнэ.
+        */}
+        <StatCard
+          label="Авлага"
+          value={money(pageTotals.owedAmount)}
+          sub={
+            pageTotals.owedCount
+              ? `${pageTotals.owedCount} хүнээс авах`
+              : 'Авлага алга'
+          }
         />
         <StatCard
           label="Нийт бичлэг"
