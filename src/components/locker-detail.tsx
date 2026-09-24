@@ -113,7 +113,12 @@ export function LockerDetail({
 
   return (
     <Dialog open onOpenChange={(v) => !v && onClose()}>
-      <DialogContent>
+      {/*
+        ⚠ Анхдагч `sm:max-w-sm` (384px) нь ГУРВАН товчийг багтаадаггүй:
+        «Сануулах» + «Буцаах» + «Гишүүн рүү очих» нь хамтдаа ~390px
+        бөгөөд цонхны хүрээнээс халина.
+      */}
+      <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <KeyRound className="text-muted-foreground size-4" />
@@ -189,7 +194,12 @@ export function LockerDetail({
           )}
         </dl>
 
-        <DialogFooter>
+        {/*
+          ⚠ `flex-wrap` — товчны тоо нөхцөлөөс хамаарч 1-3 болж
+          өөрчлөгддөг тул хамгийн өргөн хувилбар нь багтахгүй байж
+          болно. Мөр таслах нь халихаас дээр.
+        */}
+        <DialogFooter className="flex-wrap">
           {/*
             ⚠ Сануулга зөвхөн ГАРСАН хэвээр байгаа түлхүүрт. Буцаагдсаны
             дараа илгээх нь утгагүй бөгөөд гишүүнийг төөрөгдүүлнэ.
