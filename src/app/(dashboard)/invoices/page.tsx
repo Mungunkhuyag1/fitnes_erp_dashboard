@@ -63,7 +63,14 @@ interface InvoiceRow {
    * бүртгэсэн авлага нь хүн мөнгө авах хүртэл хүлээнэ. Хоёуланг нь
    * «хүлээгдэж буй» гэж нэг адил харуулбал авлага хэзээ ч цуглуулагдахгүй.
    */
-  kind: 'invoice' | 'membership';
+  kind: 'invoice' | 'membership' | 'yoga';
+  /**
+   * Бодитоор ХҮЛЭЭН АВСАН дүн.
+   *
+   * ⚠ `amount`-аас бага байж болно — йогийн төлбөр хэсэгчилж ордог.
+   * Орлогын нийлбэрийг ҮҮГЭЭР бодно.
+   */
+  amountPaid: number;
 }
 
 /** Төлбөр ЯМАР сувгаар орсон бэ. */
@@ -76,6 +83,10 @@ const CHANNEL: Record<string, { label: string; tone: string }> = {
   manual: {
     label: 'Гараар',
     tone: 'bg-muted text-muted-foreground',
+  },
+  yoga: {
+    label: 'Йог',
+    tone: 'bg-violet-500/10 text-violet-600 dark:text-violet-400',
   },
 };
 
@@ -213,8 +224,6 @@ export default function InvoicesPage() {
 
   const pageTotals = useMemo(() => {
     const items = data?.items ?? [];
-    const sum = (s: InvoiceRow['status']) =>
-      items.filter((i) => i.status === s).reduce((a, b) => a + b.amount, 0);
     /*
      * ⚠ «Хүлээгдэж буй»-г ХОЁР хуваана. Онлайн нэхэмжлэх нь 5 минутын
      * дараа өөрөө хаагддаг тул анхаарал шаардахгүй; авлага нь хүн
@@ -222,7 +231,7 @@ export default function InvoicesPage() {
      * нэхэмжлэхийн чимээнд алдагдана.
      */
     const owed = items.filter(
-      (i) => i.status === 'pending' && i.kind === 'membership',
+      (i) => i.status === 'pending' && i.kind !== 'invoice',
     );
     return {
       pending: items.filter(
@@ -231,9 +240,14 @@ export default function InvoicesPage() {
       pendingAmount: items
         .filter((i) => i.status === 'pending' && i.kind === 'invoice')
         .reduce((a, b) => a + b.amount, 0),
-      paidAmount: sum('paid'),
+      /*
+       * ⚠ `amountPaid`-аар, `amount`-аар БИШ. Йогийн хэсэгчилсэн
+       * төлбөрт (100,000/250,000) бүтэн дүнг тоолвол хүлээн аваагүй
+       * мөнгө орлогод орно.
+       */
+      paidAmount: items.reduce((a, b) => a + b.amountPaid, 0),
       owedCount: owed.length,
-      owedAmount: owed.reduce((a, b) => a + b.amount, 0),
+      owedAmount: owed.reduce((a, b) => a + (b.amount - b.amountPaid), 0),
     };
   }, [data]);
 
@@ -272,8 +286,24 @@ export default function InvoicesPage() {
       header: 'Дүн',
       sortKey: 'amount',
       cell: (i) => (
-        <span className="font-medium tabular-nums">{money(i.amount)}</span>
+        <span className="text-sm tabular-nums">
+          {/*
+            ⚠ Хэсэгчилж төлсөн бол ХОЁУЛАНГ нь харуулна. Зөвхөн нэгийг
+            нь бичвэл «250,000₮» гэж бүтэн төлсөн мэт харагдана.
+          */}
+          {i.amountPaid > 0 && i.amountPaid < i.amount ? (
+            <>
+              <span className="text-amber-700 dark:text-amber-400">
+                {money(i.amountPaid)}
+              </span>
+              <span className="text-muted-foreground"> / {money(i.amount)}</span>
+            </>
+          ) : (
+            money(i.amount)
+          )}
+        </span>
       ),
+      className: 'text-right',
     },
     {
       key: 'channel',
@@ -306,7 +336,7 @@ export default function InvoicesPage() {
           очиж мөнгө авах ёстой. Онлайн нэхэмжлэхийн «хүлээгдэж буй»
           нь өөрөө хаагдана. Нэг шошготой байвал ялгагдахгүй.
         */
-        i.status === 'pending' && i.kind === 'membership' ? (
+        i.status === 'pending' && i.kind !== 'invoice' ? (
           <span className="inline-flex items-center rounded-md bg-amber-500/10 px-2 py-0.5 text-xs font-medium text-amber-700 dark:text-amber-400">
             Авлага
           </span>
@@ -349,9 +379,16 @@ export default function InvoicesPage() {
       key: 'act',
       header: '',
       cell: (i) =>
-        // Зөвхөн АВЛАГА дээр. Онлайн нэхэмжлэхийг гараар «төлөгдсөн»
-        // болгох нь өөр урсгал (баримт шалгах) бөгөөд энд байх ёсгүй.
-        i.status === 'pending' && i.kind === 'membership' ? (
+        /*
+          ⚠ Йогийн төлбөрийг ЭНД авахгүй — хэсэгчилж ордог тул хэдийг
+          авахаа сонгох хэрэгтэй. Ангийн дэлгэц рүү заана.
+
+          Онлайн нэхэмжлэхийг гараар «төлөгдсөн» болгох нь өөр урсгал
+          (баримт шалгах) бөгөөд энд байх ёсгүй.
+        */
+        i.status === 'pending' && i.kind === 'yoga' ? (
+          <span className="text-muted-foreground text-xs">Йог дэлгэцээс</span>
+        ) : i.status === 'pending' && i.kind === 'membership' ? (
           <Button
             size="sm"
             variant="outline"

@@ -54,6 +54,7 @@ interface Dash {
     bonum: number;
     manual: number;
     locker: number;
+    yoga: number;
     total: number;
   };
   /**
@@ -62,7 +63,13 @@ interface Dash {
    * ⚠ Орлогод ОРООГҮЙ. Хоёрыг нэмбэл кассанд байгаа мөнгөтэй таарахаа
    * болино.
    */
-  receivable: { amount: number; members: number };
+  receivable: {
+    /** Заал + йог НИЙЛСЭН — ажилтан хэдийг цуглуулахаа мэдэх ёстой. */
+    amount: number;
+    gym: number;
+    yoga: number;
+    members: number;
+  };
   sync: { memberErrors: number; outboxFailed: number; outboxPending: number };
   devices: {
     id: string;
@@ -468,8 +475,8 @@ export default function HomePage() {
             */
             sub={
               d.receivable.amount
-                ? `Бэлэн ${money(d.revenueToday.cash)} · ⚠ Авлага ${money(d.receivable.amount)}`
-                : `Бэлэн ${money(d.revenueToday.cash)} · Онлайн ${money(d.revenueToday.bonum)}`
+                ? `Бэлэн ${money(d.revenueToday.cash)}${d.revenueToday.yoga ? ` · Йог ${money(d.revenueToday.yoga)}` : ''} · ⚠ Авлага ${money(d.receivable.amount)}`
+                : `Бэлэн ${money(d.revenueToday.cash)} · Онлайн ${money(d.revenueToday.bonum)}${d.revenueToday.yoga ? ` · Йог ${money(d.revenueToday.yoga)}` : ''}`
             }
             delta={d.period.revenueDelta}
             footL={shortLabel}

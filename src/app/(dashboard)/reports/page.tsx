@@ -16,7 +16,16 @@ import { date, money, relative } from '@/lib/format';
 import { cn } from '@/lib/utils';
 
 interface Summary {
-  revenue: { membership: number; locker: number; total: number; reversed: number };
+  revenue: {
+    membership: number;
+    locker: number;
+    /** ⚠ Тусдаа мөр — аль үйлчилгээ хэр ашигтайг ялгах боломжтой. */
+    yoga: number;
+    total: number;
+    reversed: number;
+    /** Энэ мужид зарагдсан ч мөнгө нь ирээгүй дүн. `total`-д ОРООГҮЙ. */
+    receivable: number;
+  };
   sales: number;
   lockerRentals: number;
   newMembers: number;
@@ -31,6 +40,7 @@ interface Revenue {
     bonum: number;
     manual: number;
     locker: number;
+    yoga: number;
     total: number;
   }[];
 }
@@ -133,13 +143,15 @@ export default function ReportsPage() {
 
   const sourceTotals = useMemo(() => {
     if (!revenue?.items.length) return [];
-    const sum = (k: 'cash' | 'bonum' | 'manual' | 'locker') =>
+    const sum = (k: 'cash' | 'bonum' | 'manual' | 'locker' | 'yoga') =>
       revenue.items.reduce((s, i) => s + i[k], 0);
     return [
       { label: 'Бэлэн', value: sum('cash'), color: 'var(--chart-1)' },
       { label: 'Онлайн', value: sum('bonum'), color: 'var(--chart-3)' },
       { label: 'Гараар', value: sum('manual'), color: 'var(--chart-4)' },
       { label: 'Шүүгээ', value: sum('locker'), color: 'var(--chart-2)' },
+      // Йог нь тусдаа үйлчилгээ — задаргаанд өөрийн хувьтай.
+      { label: 'Йог', value: sum('yoga'), color: 'var(--chart-5)' },
     ].filter((x) => x.value > 0);
   }, [revenue]);
 
@@ -179,7 +191,13 @@ export default function ReportsPage() {
             <StatCard
               label="Нийт орлого"
               value={money(summary.revenue.total)}
-              sub={`гишүүнчлэл ${money(summary.revenue.membership)} · шүүгээ ${money(summary.revenue.locker)}`}
+              sub={
+                `гишүүнчлэл ${money(summary.revenue.membership)} · шүүгээ ${money(summary.revenue.locker)}` +
+                (summary.revenue.yoga ? ` · йог ${money(summary.revenue.yoga)}` : '') +
+                (summary.revenue.receivable
+                  ? ` · ⚠ авлага ${money(summary.revenue.receivable)}`
+                  : '')
+              }
             />
             <StatCard
               label="Борлуулалт"
@@ -516,6 +534,8 @@ export default function ReportsPage() {
               ['Нийт орлого', summary?.revenue.total ?? 0],
               ['Гишүүнчлэл', summary?.revenue.membership ?? 0],
               ['Шүүгээ', summary?.revenue.locker ?? 0],
+              ['Йог', summary?.revenue.yoga ?? 0],
+              ['Авлага (аваагүй)', summary?.revenue.receivable ?? 0],
               ['Буцаалт', summary?.revenue.reversed ?? 0],
               ['Борлуулалт', summary?.sales ?? 0],
               ['Дундаж чек', summary?.averageSale ?? 0],
