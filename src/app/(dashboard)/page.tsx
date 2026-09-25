@@ -15,7 +15,6 @@ import { useMemo, useState } from "react";
 import { DonutChart, TrendChart } from "@/components/charts";
 import { LinkButton } from "@/components/link-button";
 import { AwaitingApprovalCard } from "@/components/awaiting-approval-card";
-import { DoorBar } from "@/components/door-bar";
 import { ReceivablesCard } from "@/components/receivables-card";
 import { StatCard } from "@/components/stat-card";
 import { TaskTodoCard, useTodo } from "@/components/task-todo-card";
@@ -309,13 +308,6 @@ export default function HomePage() {
   return (
     // `order-*` ажиллахын тулд эцэг нь flex байх шаардлагатай.
     <div className="flex flex-col gap-5">
-      {/*
-        ★ ХАМГИЙН ДЭЭД МӨР — ХААЛГА НЭЭХ.
-        Гишүүн гадаа зогсож байхад гүйлгэх зай байхгүй. Дэлгэрэнгүй
-        шалтгааныг `door-bar.tsx` дотор.
-      */}
-      <DoorBar devices={d.devices} />
-
       {/*
         ★ ДЭЭД МӨР — «ЮУ ХИЙХ ЁСТОЙ ВЭ».
 

@@ -19,6 +19,7 @@ import { usePathname } from 'next/navigation';
 import type { ReactNode } from 'react';
 import { NAV } from '@/components/app-nav';
 import { Breadcrumb } from '@/components/breadcrumb';
+import { DoorBar } from '@/components/door-bar';
 import { ChatWidget } from '@/components/chat-widget';
 import { Button } from '@/components/ui/button';
 import {
@@ -353,6 +354,15 @@ function SiteHeader() {
           )}
         </div>
         <div className="ml-auto flex items-center gap-2">
+          {/*
+            ХААЛГА НЭЭХ — «Гишүүн нэмэх»-тэй зэрэгцээ.
+
+            Гишүүн хаалганы гадаа зогсоод байхад ажилтан аль дэлгэц
+            дээр байх нь тодорхойгүй: ирц, гишүүний профайл, йогийн
+            анги. Нүүр лүү буцаад доош гүйлгэх зай байхгүй.
+            Эрхгүй хүн эсвэл терминалгүй бол өөрөө нуугдана.
+          */}
+          <DoorBar />
           {/*
             Гишүүн нэмэх — РЕСЕПШНИЙ ХАМГИЙН ТҮГЭЭМЭЛ ҮЙЛДЭЛ.
 

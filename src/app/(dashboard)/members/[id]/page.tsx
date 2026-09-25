@@ -34,6 +34,7 @@ import { GENDER_LABEL } from '@/components/gender-picker';
 import { ExtendDialog } from '@/components/extend-dialog';
 import { FaceEnrollBanner, FaceEnrollButton } from '@/components/face-enroll';
 import { LinkButton } from '@/components/link-button';
+import { MemberReceivable, type UnpaidRow } from '@/components/member-receivable';
 import { PageHeader } from '@/components/page-header';
 import { RecordDialog } from '@/components/record-dialog';
 import { StaffLinkField } from '@/components/staff-link-field';
@@ -111,6 +112,8 @@ interface MembershipRow {
   source: string;
   reason: string | null;
   endsAt: string;
+  /** `null` = «дараа төлье»-өөр зарсан, мөнгө хараахан ирээгүй. */
+  paidAt: string | null;
   reversedAt: string | null;
   createdAt: string;
 }
@@ -202,6 +205,15 @@ export default function MemberDetailPage() {
 
   const { data: memberships, reload: reloadMs } = useApi<Page<MembershipRow>>(
     `/members/${id}/memberships${qs(msTable.params)}`,
+  );
+  /*
+   * ⚠ Авлагыг ТУСДАА татна — дээрх дэвтэр нь ХУУДАСЛАГДСАН бөгөөд
+   * ажилтны сонгосон эрэмбээр ирдэг. Тэрнээс шүүвэл 3 дахь хуудсанд
+   * үлдсэн хуучин өр нүүрэн дээр ХЭЗЭЭ Ч харагдахгүй — яг тэр нь
+   * хамгийн чухал өр байх магадлалтай.
+   */
+  const { data: unpaid, reload: reloadUnpaid } = useApi<Page<UnpaidRow>>(
+    `/members/${id}/memberships?unpaid=1&limit=50&sort=createdAt&order=asc`,
   );
   const { data: events } = useApi<Page<EventRow>>(
     `/access-events${qs({ memberId: id, ...evTable.params })}`,
@@ -491,9 +503,18 @@ export default function MemberDetailPage() {
     {
       key: 'rev',
       header: '',
+      /*
+       * ⚠ «Төлөөгүй»-г дэвтэр дээр ч харуулна. Дээрх баннер нь зөвхөн
+       * ИДЭВХТЭЙ авлагыг хэлнэ; түүхийг гүйлгэж байгаа ажилтан аль
+       * мөр нь мөнгөгүй байсныг ялгаж чадах ёстой.
+       */
       cell: (r) =>
         r.reversedAt ? (
           <span className="text-muted-foreground text-xs">Буцаагдсан</span>
+        ) : r.paidAt === null && r.amount > 0 ? (
+          <span className="rounded-md bg-amber-500/10 px-1.5 py-0.5 text-xs font-medium text-amber-700 dark:text-amber-400">
+            Төлөөгүй
+          </span>
         ) : null,
     },
   ];
@@ -559,6 +580,20 @@ export default function MemberDetailPage() {
           </Button>
         </div>
       )}
+
+      {/*
+        ⚠ АВЛАГА нь эрхийн төлөвтэй ижил жинтэй. Нүүр дэлгэцийн авлагын
+        жагсаалтаас энэ профайл руу товшиж ирдэг тул ажилтан юу хийхээ
+        ЭНД, гүйлгэхгүйгээр олох ёстой. Авлагагүй бол өөрөө нуугдана.
+      */}
+      <MemberReceivable
+        rows={unpaid?.items ?? []}
+        onDone={() => {
+          reload();
+          reloadMs();
+          reloadUnpaid();
+        }}
+      />
 
       {/* Үйлдлүүд */}
       <div className="flex flex-wrap gap-2">

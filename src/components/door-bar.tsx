@@ -4,27 +4,40 @@ import { DoorOpen, Loader2 } from 'lucide-react';
 import { useState } from 'react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
+import { useApi } from '@/hooks/use-api';
 import { api } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
 import { errorToast } from '@/lib/errors';
 import { relative } from '@/lib/format';
 import { cn } from '@/lib/utils';
-import type { DeviceBrief } from '@/components/terminal-quick-actions';
+
+interface DeviceBrief {
+  id: string;
+  name: string;
+  online: boolean;
+  lastSeenAt: string | null;
+}
 
 /**
- * ХААЛГА НЭЭХ — нүүр хуудасны ХАМГИЙН ДЭЭД мөр.
+ * ХААЛГА НЭЭХ — програмын ТОЛГОЙН мөрөнд.
  *
- * ★ ЯАГААД ДООРООС ДЭЭР ЗӨӨВ
+ * ★ ЯАГААД ТОЛГОЙД ВЭ
  *
- * Товч нь «Терминал» картын дотор, нүүр хуудасны хамгийн ДООД талд
- * байв. Гишүүн хаалганы гадаа зогсоод байхад ажилтан:
+ * Эхлээд «Терминал» картын дотор, нүүр хуудасны хамгийн ДООД талд байв.
+ * Гишүүн хаалганы гадаа зогсоод байхад ажилтан бүтэн хуудсыг гүйлгэж,
+ * график, хүснэгт ачаалагдахыг хүлээж, тэгээд жижиг товчийг олох
+ * шаардлагатай байлаа.
  *
- *   1. нүүр хуудсыг бүхэлд гүйлгэж доош хүрэх
- *   2. график, түлхүүрийн хүснэгт зэрэг БҮГД ачаалагдахыг хүлээх
- *   3. тэгээд л жижиг `size="sm"` товчийг олох
- *
- * Хаалга нээх нь ресепшний хамгийн ЯАРАЛТАЙ үйлдэл — хүн гадаа хүлээж
- * байна. Тиймээс гүйлгэлгүйгээр, хамгийн дээр, ТОМ товчоор.
+ * Дараа нь нүүрийн дээд мөрөнд гаргасан. Гэвч тэр ч хангалтгүй:
+ * ажилтан ирцийн жагсаалт, гишүүний дэлгэц, йогийн анги дээр байхад
+ * НҮҮР ЛҮҮ буцах шаардлагатай хэвээр байв. Хаалга нээх нь ресепшний
+ * ХАМГИЙН яаралтай үйлдэл — «Гишүүн нэмэх»-тэй ижилхэн БҮХ дэлгэцээс
+ * хүрдэг байх ёстой.
  *
  * ⚠ Баталгаажуулах цонх ЗОРИУДААР байхгүй. Хаалга хэдэн секундын дараа
  * өөрөө хаагдах ба үйлдэл аудитад бичигдэнэ — нэмэлт алхам нь зөвхөн
@@ -35,12 +48,28 @@ import type { DeviceBrief } from '@/components/terminal-quick-actions';
  * сая асчихсан байхад товч «disabled» байвал ажилтан гарц хайна. Оронд
  * нь дарж үзээд, амжилтгүй бол тодорхой алдаа харуулна.
  */
-export function DoorBar({ devices }: { devices: DeviceBrief[] }) {
+export function DoorBar() {
   const { can } = useAuth();
   const [opening, setOpening] = useState<string | null>(null);
 
-  // Эрхгүй хүнд хоосон мөр харуулах нь зай эзлэхээс өөр үүрэггүй.
+  /*
+   * ⚠ ХӨНГӨН endpoint (`/devices/brief`) — `/devices` нь entity-г
+   * бүтнээр (хост, порт, хэрэглэгч) буцаадаг. Энэ бол БҮХ хуудсан
+   * дээр амьдардаг бүрэлдэхүүн тул хамгийн бага өгөгдөл л зөв.
+   *
+   * 60 секунд — төлөвийн цэг хэт хоцрохгүй, гэхдээ backend нь
+   * 5 минут тутам л шалгадаг тул илүү ойрхон татах нь дэмий.
+   */
+  const { data } = useApi<DeviceBrief[]>(
+    can('manager') ? '/devices/brief' : null,
+    { refreshMs: 60_000 },
+  );
+
+  const devices = data ?? [];
+  // Эрхгүй хүн, эсвэл терминал тохируулаагүй бол толгойн зайг эзлэхгүй.
   if (!can('manager') || devices.length === 0) return null;
+
+  const offline = devices.filter((d) => !d.online);
 
   async function open(dev: DeviceBrief) {
     setOpening(dev.id);
@@ -57,53 +86,62 @@ export function DoorBar({ devices }: { devices: DeviceBrief[] }) {
   }
 
   return (
-    // `flex-wrap` — хоёр ба түүнээс дээш терминалтай үед мөр тасална.
-    <div className="flex flex-wrap items-center gap-3">
+    <div className="flex items-center gap-1.5">
       {devices.map((dev) => (
-        <Button
-          key={dev.id}
-          // ⚠ `lg` — гүйлгэлгүйгээр, хараад шууд дарах хэмжээ.
-          size="lg"
-          onClick={() => void open(dev)}
-          disabled={opening === dev.id}
-          className="flex-1 justify-start sm:flex-none"
-        >
-          {opening === dev.id ? (
-            <Loader2 className="size-4 animate-spin" />
-          ) : (
-            <DoorOpen className="size-4" />
-          )}
-          Хаалга нээх
-          {/*
-            Терминал нэг л байвал нэрийг давтах нь дэмий — «Хаалга нээх»
-            гэдэг нь аль хэдийн тодорхой. Хоёр байвал ЗААВАЛ хэрэгтэй.
-          */}
-          {devices.length > 1 && (
-            <span className="text-primary-foreground/70 text-xs font-normal">
-              {dev.name}
-            </span>
-          )}
-        </Button>
+        <Tooltip key={dev.id}>
+          <TooltipTrigger
+            render={
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => void open(dev)}
+                disabled={opening === dev.id}
+                aria-label={`${dev.name} — хаалга нээх`}
+              />
+            }
+          >
+            {opening === dev.id ? (
+              <Loader2 className="size-4 animate-spin" />
+            ) : (
+              <DoorOpen className="size-4" />
+            )}
+            {/*
+              ⚠ Утсан дээр ЗӨВХӨН икон — толгойн мөрөнд «Гишүүн нэмэх»-
+              тэй хамт хоёр бичвэртэй товч багтахгүй.
+            */}
+            <span className="hidden sm:inline">Хаалга нээх</span>
+            {/*
+              ТӨЛӨВИЙН ЦЭГ товчны ДОТОР — жижиг дэлгэцэд ганц үлддэг
+              дохио. Энэ нь «дарвал ажиллах болов уу» гэдгийг УРЬДЧИЛАН
+              хэлнэ; товчийг хаадаггүй.
+            */}
+            <span
+              className={cn(
+                'size-1.5 rounded-full',
+                dev.online ? 'bg-emerald-500' : 'bg-muted-foreground/40',
+              )}
+            />
+          </TooltipTrigger>
+          <TooltipContent>
+            {dev.name} ·{' '}
+            {dev.online
+              ? 'терминал холбогдсон'
+              : `сүүлд ${relative(dev.lastSeenAt)}`}
+          </TooltipContent>
+        </Tooltip>
       ))}
 
       {/*
-        Төлөвийг товчны ХАЖУУД, тайван өнгөөр. Товчийг хаадаггүй тул энэ
-        нь «дарвал бүтэхгүй байж магадгүй» гэсэн УРЬДЧИЛСАН мэдээлэл.
+        ⚠ БИЧВЭРЭЭР төлөв — зөвхөн ӨРГӨН дэлгэцэд (`lg`).
+        Ресепшн терминал унтарсныг товч дарж байж мэдэх ёсгүй: хаалганы
+        гадаа хүн зогсож байхад тэр нь хэдэн секундын алдагдал. Гэвч
+        толгойн мөр нарийн тул жижиг дэлгэцэд цэг + tooltip хангалттай.
       */}
-      {devices.some((d) => !d.online) && (
-        <p className="text-muted-foreground text-xs">
-          {devices
-            .filter((d) => !d.online)
-            .map((d) => `${d.name}: сүүлд ${relative(d.lastSeenAt)}`)
-            .join(' · ')}
-        </p>
-      )}
-      {devices.every((d) => d.online) && (
-        <span className="text-muted-foreground flex items-center gap-1.5 text-xs">
-          <span className={cn('size-2 rounded-full', 'bg-emerald-500')} />
-          Терминал холбогдсон
-        </span>
-      )}
+      <span className="text-muted-foreground hidden items-center gap-1.5 text-xs lg:flex">
+        {offline.length === 0
+          ? 'Терминал холбогдсон'
+          : `Терминал унтарсан · сүүлд ${relative(offline[0].lastSeenAt)}`}
+      </span>
     </div>
   );
 }
