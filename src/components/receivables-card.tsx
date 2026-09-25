@@ -228,7 +228,7 @@ export function ReceivablesCard() {
                 />
               </div>
             )}
-            <LinkButton size="sm" variant="ghost" href="/invoices?paid=unpaid">
+            <LinkButton size="sm" variant="ghost" href="/invoices">
               Төлбөр
             </LinkButton>
           </div>
