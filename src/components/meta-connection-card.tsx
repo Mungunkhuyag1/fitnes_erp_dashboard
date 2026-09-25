@@ -46,10 +46,10 @@ interface Status {
 /** `/meta/check` — оношилгооны хариу. */
 interface Check {
   connected: boolean;
-  token: { ok: boolean; error?: string };
+  token: { ok: boolean; error?: string; note?: string };
   page: { id: string; name: string } | null;
   /** `'never'` = хэзээ ч дуусахгүй, `null` = App ID өгөөгүй тул мэдэхгүй. */
-  expiresAt: string | null | 'never';
+  expiresAt: string | null | 'never' | 'unknown';
   subscription: {
     subscribed: boolean;
     fields: string[];
@@ -228,6 +228,7 @@ export function MetaConnectionCard() {
                       ? (diag.page?.name ?? 'хүчинтэй')
                       : (diag.token.error ?? 'хүчингүй')
                   }
+                  note={diag.token.note}
                   fix="Токен хугацаа дууссан бол Meta дээр шинээр үүсгээд доор дахин хадгална"
                 />
 
@@ -238,19 +239,23 @@ export function MetaConnectionCard() {
                 */}
                 <Row
                   ok={diag.expiresAt === 'never'}
-                  warn={diag.expiresAt === null}
+                  warn={diag.expiresAt === null || diag.expiresAt === 'unknown'}
                   label="Хугацаа"
                   value={
                     diag.expiresAt === 'never'
                       ? 'Хэзээ ч дуусахгүй'
                       : diag.expiresAt === null
                         ? 'App ID өгөөгүй тул мэдэхгүй'
-                        : `${date(diag.expiresAt)}-нд дуусна`
+                        : diag.expiresAt === 'unknown'
+                          ? 'Шалгаж чадсангүй — App ID зөв эсэхийг хар'
+                          : `${date(diag.expiresAt)}-нд дуусна`
                   }
                   fix={
                     diag.expiresAt === null
                       ? 'Доорх App ID талбарыг бөглөвөл шалгана'
-                      : 'Урт хугацааны токен авах: docs/17 §4'
+                      : diag.expiresAt === 'unknown'
+                        ? 'App ID нь Meta → App settings → Basic дээрхтэй таарч байна уу'
+                        : 'Урт хугацааны токен авах: docs/17 §4'
                   }
                 />
 
@@ -462,12 +467,15 @@ function Row({
   label,
   value,
   fix,
+  note,
 }: {
   ok: boolean;
   warn?: boolean;
   label: string;
   value: string;
   fix: string;
+  /** Зөв боловч мэдэх нь зүйтэй зүйл — алдаа БИШ. */
+  note?: string;
 }) {
   const Icon = ok ? Check : warn ? AlertTriangle : X;
   return (
@@ -488,6 +496,9 @@ function Row({
           {value}
         </span>
         {!ok && <span className="text-muted-foreground block">{fix}</span>}
+        {ok && note && (
+          <span className="text-muted-foreground block">{note}</span>
+        )}
       </span>
     </div>
   );
