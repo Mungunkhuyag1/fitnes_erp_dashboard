@@ -50,6 +50,8 @@ interface Check {
   page: { id: string; name: string } | null;
   /** `'never'` = хэзээ ч дуусахгүй, `null` = App ID өгөөгүй тул мэдэхгүй. */
   expiresAt: string | null | 'never' | 'unknown';
+  scopes: string[];
+  missingScopes: string[];
   subscription: {
     subscribed: boolean;
     fields: string[];
@@ -258,6 +260,26 @@ export function MetaConnectionCard() {
                         : 'Урт хугацааны токен авах: docs/17 §4'
                   }
                 />
+
+                {/*
+                  ★ ЭРХИЙН ЖАГСААЛТ — таамаглалыг баримтаар солино.
+                  Meta-гийн самбарт эрх «нэмэгдсэн» харагдаж байхад
+                  ТОКЕНД нь ороогүй байх нь энэ тохиргооны хамгийн олон
+                  удаа тохиолдсон алдаа. Токен өөрөө юу авч явааг
+                  харуулбал маргаан дуусна.
+                */}
+                {diag.scopes.length > 0 && (
+                  <Row
+                    ok={diag.missingScopes.length === 0}
+                    label="Эрх"
+                    value={
+                      diag.missingScopes.length
+                        ? `Дутуу: ${diag.missingScopes.join(', ')}`
+                        : diag.scopes.join(', ')
+                    }
+                    fix="Эрх нь ТОКЕН дотор шигтгэгддэг: facebook.com → Settings → Apps and Websites → Winfit App → Remove, дараа нь Meta дээр Generate token-оор ШИНЭЭР үүсгэ"
+                  />
+                )}
 
                 <Row
                   ok={diag.subscription.subscribed && diag.subscription.missing.length === 0}
