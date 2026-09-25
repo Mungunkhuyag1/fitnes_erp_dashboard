@@ -286,16 +286,24 @@ export function MetaConnectionCard() {
                       ? `Татгалзсан: ${diag.webhook.error}`
                       : diag.webhook.lastAt
                         ? `Сүүлд ${dateTime(diag.webhook.lastAt)}`
-                        : diag.webhook.verifiedAt
-                          ? 'Хаяг баталгаажсан ч мессеж хараахан ирээгүй'
-                          : 'Meta ХЭЗЭЭ Ч хандаагүй — Callback URL бүртгэгдээгүй'
+                        : 'Meta бидэн рүү хараахан хандаагүй'
                   }
+                  /*
+                   * ⚠ META-Д ХОЁР ӨӨР ЗАХИАЛГА БАЙДАГ — эндээс л хүн гацдаг.
+                   *
+                   *  A. «Add Subscriptions» (хуудасны мөрөнд) — энэ ХУУДАС
+                   *     энэ аппад холбогдсон гэдгийг хэлнэ
+                   *  B. «Configure webhooks» доорх Webhook fields жагсаалт —
+                   *     ямар ТАЛБАРУУДЫГ Callback URL руу явуулахыг хэлнэ
+                   *
+                   * A-г хийгээд B-г мартвал Meta таны хаягийг мэдэж байгаа ч
+                   * юу ч явуулахгүй. Хоёулаа ногоон харагддаг тул шалтгааныг
+                   * таах боломжгүй — тиймээс зөвлөгөөнд ХОЁУЛАНГ нь нэрлэнэ.
+                   */
                   fix={
                     diag.webhook.error
                       ? 'App secret буруу байна — Meta → App settings → Basic-ээс дахин хуулж доор хадгал'
-                      : diag.webhook.verifiedAt
-                        ? 'Хуудас руу мессеж бичиж үз. Ирэхгүй бол Meta дээр «Add Subscriptions» → messages асаалттай эсэхийг шалга'
-                        : 'Meta → Messenger API Settings → «1. Configure webhooks» → дээрх хаягийг тавьж Verify and save'
+                      : 'Meta → Messenger API Settings: (1) «Configure webhooks»-д дээрх хаягийг тавьж Verify and save, (2) ТЭР ДООРХ «Webhook fields» жагсаалтаас messages, message_echoes, messaging_postbacks-ыг Subscribe болго, (3) хуудасны мөрөнд «Add Subscriptions». Гурвуулаа хэрэгтэй.'
                   }
                 />
 
