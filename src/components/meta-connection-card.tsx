@@ -52,6 +52,11 @@ interface Check {
   expiresAt: string | null | 'never' | 'unknown';
   scopes: string[];
   missingScopes: string[];
+  webhook: {
+    verifiedAt: string | null;
+    lastAt: string | null;
+    error: string | null;
+  };
   subscription: {
     subscribed: boolean;
     fields: string[];
@@ -258,6 +263,39 @@ export function MetaConnectionCard() {
                       : diag.expiresAt === 'unknown'
                         ? 'App ID нь Meta → App settings → Basic дээрхтэй таарч байна уу'
                         : 'Урт хугацааны токен авах: docs/17 §4'
+                  }
+                />
+
+                {/*
+                  ★ META БИДЭН РҮҮ ХАНДАЖ БАЙНА УУ.
+
+                  «Мессеж ирэхгүй байна» гэсэн гомдол нь ГУРВАН өөр
+                  асуудал: Meta огт хандахгүй / хандаж байгаа ч гарын
+                  үсэг таарахгүй / хандаж, хүлээж авч байгаа. Гурвуулаа
+                  дэлгэц дээр ижил харагддаг — хоосон чат. Энэ мөр
+                  тэднийг салгана.
+                */}
+                <Row
+                  ok={diag.webhook.lastAt !== null && !diag.webhook.error}
+                  warn={
+                    diag.webhook.lastAt === null && diag.webhook.verifiedAt !== null
+                  }
+                  label="Түлхэлт"
+                  value={
+                    diag.webhook.error
+                      ? `Татгалзсан: ${diag.webhook.error}`
+                      : diag.webhook.lastAt
+                        ? `Сүүлд ${dateTime(diag.webhook.lastAt)}`
+                        : diag.webhook.verifiedAt
+                          ? 'Хаяг баталгаажсан ч мессеж хараахан ирээгүй'
+                          : 'Meta ХЭЗЭЭ Ч хандаагүй — Callback URL бүртгэгдээгүй'
+                  }
+                  fix={
+                    diag.webhook.error
+                      ? 'App secret буруу байна — Meta → App settings → Basic-ээс дахин хуулж доор хадгал'
+                      : diag.webhook.verifiedAt
+                        ? 'Хуудас руу мессеж бичиж үз. Ирэхгүй бол Meta дээр «Add Subscriptions» → messages асаалттай эсэхийг шалга'
+                        : 'Meta → Messenger API Settings → «1. Configure webhooks» → дээрх хаягийг тавьж Verify and save'
                   }
                 />
 
