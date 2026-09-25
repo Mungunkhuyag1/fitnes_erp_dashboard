@@ -1,7 +1,6 @@
 'use client';
 
 import {
-  DoorOpen,
   Loader2,
   PlugZap,
   RefreshCw,
@@ -38,35 +37,20 @@ export interface DeviceBrief {
  *
  * ★ ЯАГААД НҮҮР ХУУДСАНД ВЭ
  *
- * Ресепшний ажилтан өдөржин нүүр хуудсан дээр байдаг. Хаалга нээх нь
- * ялангуяа яаралтай хэрэгцээ: хүн гадаа зогсоод байхад «Терминал»
- * дэлгэц рүү шилжиж, хүснэгт ачаалагдахыг хүлээх нь урт. Урьд нь энэ
- * хэсэг зөвхөн «холбогдсон эсэх»-ийг харуулдаг байсан — мэдээлэл өгдөг
- * ч юу ч ХИЙЖ чаддаггүй байв.
+ * Ресепшний ажилтан өдөржин нүүр хуудсан дээр байдаг. «Терминал» дэлгэц
+ * рүү шилжиж, хүснэгт ачаалагдахыг хүлээх нь урт. Урьд нь энэ хэсэг
+ * зөвхөн «холбогдсон эсэх»-ийг харуулдаг байсан — мэдээлэл өгдөг ч юу ч
+ * ХИЙЖ чаддаггүй байв.
  *
- * ⚠ Баталгаажуулах цонх ЗОРИУДААР байхгүй — «Терминал» дэлгэц дээрхтэй
- * ижил зан. Хаалга нээх нь буцаах боломжгүй үйлдэл БИШ (хэдэн секундын
- * дараа өөрөө хаагдана) бөгөөд аудитад бичигдэнэ. Нэмэлт алхам нь
- * яаралтай үед л саад болно.
+ * ⚠ ХААЛГА НЭЭХ товч ЭНД БАЙХГҮЙ — `DoorBar` (нүүрийн хамгийн дээд мөр)
+ * руу зөөгдсөн. Хоёр газарт байлгах нь дэмий: ажилтан аль нь «жинхэнэ»
+ * бол гэж эргэлзэнэ. Энэ карт нь ХОВОР, оношилгооны үйлдлүүдийг үлдээв
+ * (холболт шалгах, ирц татах, царай шалгах) — тэднийг гүйлгээд олоход
+ * асуудалгүй.
  */
 export function TerminalQuickActions({ devices }: { devices: DeviceBrief[] }) {
   const { can } = useAuth();
-  const [opening, setOpening] = useState<string | null>(null);
   const [busy, setBusy] = useState<'ping' | 'events' | 'face' | null>(null);
-
-  async function openDoor(id: string, name: string) {
-    setOpening(id);
-    try {
-      await api.post(`/devices/${id}/open-door`, {});
-      toast.success(`${name} — хаалга нээгдлээ`, {
-        description: 'Үйлдэл аудитад бичигдэв',
-      });
-    } catch (e) {
-      errorToast(e, 'Алдаа гарлаа');
-    } finally {
-      setOpening(null);
-    }
-  }
 
   async function ping() {
     setBusy('ping');
@@ -213,21 +197,6 @@ export function TerminalQuickActions({ devices }: { devices: DeviceBrief[] }) {
                 {dev.online ? 'Холбогдсон' : `Сүүлд ${relative(dev.lastSeenAt)}`}
               </p>
             </div>
-            {can('manager') && (
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => openDoor(dev.id, dev.name)}
-                disabled={opening === dev.id}
-              >
-                {opening === dev.id ? (
-                  <Loader2 className="size-3.5 animate-spin" />
-                ) : (
-                  <DoorOpen className="size-3.5" />
-                )}
-                Хаалга нээх
-              </Button>
-            )}
           </div>
         ))}
       </CardContent>
