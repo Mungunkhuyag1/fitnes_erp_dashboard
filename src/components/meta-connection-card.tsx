@@ -1,6 +1,16 @@
 'use client';
 
-import { Check, Copy, Loader2, MessageSquare, Unplug } from 'lucide-react';
+import {
+  AlertTriangle,
+  BellRing,
+  Check,
+  Copy,
+  Loader2,
+  MessageSquare,
+  Stethoscope,
+  Unplug,
+  X,
+} from 'lucide-react';
 import { useState } from 'react';
 import { toast } from 'sonner';
 import { errorToast } from '@/lib/errors';
@@ -17,7 +27,8 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { useApi } from '@/hooks/use-api';
 import { api } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
-import { dateTime } from '@/lib/format';
+import { date, dateTime } from '@/lib/format';
+import { cn } from '@/lib/utils';
 
 interface Status {
   connected: boolean;
@@ -26,8 +37,25 @@ interface Status {
   verifyToken: string | null;
   hasToken: boolean;
   hasAppSecret: boolean;
+  hasAppId: boolean;
   connectedAt: string | null;
   /** Meta-гийн самбарт хуулж тавих хаяг. */
+  webhookUrl: string;
+}
+
+/** `/meta/check` — оношилгооны хариу. */
+interface Check {
+  connected: boolean;
+  token: { ok: boolean; error?: string };
+  page: { id: string; name: string } | null;
+  /** `'never'` = хэзээ ч дуусахгүй, `null` = App ID өгөөгүй тул мэдэхгүй. */
+  expiresAt: string | null | 'never';
+  subscription: {
+    subscribed: boolean;
+    fields: string[];
+    missing: string[];
+    error?: string;
+  };
   webhookUrl: string;
 }
 
@@ -54,13 +82,17 @@ export function MetaConnectionCard() {
   const [token, setToken] = useState('');
   const [appSecret, setAppSecret] = useState('');
   const [verifyToken, setVerifyToken] = useState('');
+  const [appId, setAppId] = useState('');
   const [busy, setBusy] = useState(false);
+  const [checking, setChecking] = useState(false);
+  const [diag, setDiag] = useState<Check | null>(null);
 
   async function connect() {
     setBusy(true);
     try {
       const r = await api.post<{ pageName: string }>('/meta/connect', {
         pageId: pageId.trim() || undefined,
+        appId: appId.trim() || undefined,
         token: token.trim(),
         appSecret: appSecret.trim(),
         verifyToken: verifyToken.trim(),
@@ -69,6 +101,9 @@ export function MetaConnectionCard() {
       setToken('');
       setAppSecret('');
       reload();
+      // Холбомогц ШУУД оношилно — «одоо юу дутуу байна» гэдгийг
+      // ажилтан дараагийн товч хайлгүй харна.
+      void runCheck();
     } catch (e) {
       errorToast(e, 'Алдаа гарлаа');
     } finally {
@@ -84,6 +119,40 @@ export function MetaConnectionCard() {
       reload();
     } catch (e) {
       errorToast(e, 'Алдаа гарлаа');
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  /**
+   * Оношилгоо.
+   *
+   * ⚠ Алдааг toast-оор ШИДЭХГҮЙ — `check` нь өөрөө «юу эвдэрсэн»-ийг
+   * буцаадаг тул хариуг нь харуулах нь зөв. Зөвхөн сүлжээ тасарсан
+   * үед л toast.
+   */
+  async function runCheck() {
+    setChecking(true);
+    try {
+      setDiag(await api.get<Check>('/meta/check'));
+    } catch (e) {
+      errorToast(e, 'Шалгаж чадсангүй');
+    } finally {
+      setChecking(false);
+    }
+  }
+
+  /** Хуудсыг аппад захиалах — Meta-гийн самбарт гараар хийдэг алхам. */
+  async function subscribe() {
+    setBusy(true);
+    try {
+      const r = await api.post<{ fields: string[] }>('/meta/subscribe', {});
+      toast.success('Хуудас захиалагдлаа', {
+        description: r.fields.join(', '),
+      });
+      await runCheck();
+    } catch (e) {
+      errorToast(e, 'Захиалга бүтсэнгүй');
     } finally {
       setBusy(false);
     }
@@ -122,15 +191,97 @@ export function MetaConnectionCard() {
                 {dateTime(data.connectedAt)}
               </span>
             </div>
-            {admin && (
-              <Button variant="outline" onClick={disconnect} disabled={busy}>
-                {busy ? (
+            {/*
+              ★ ШАЛГАХ — «холбогдсон» гэдэг нь «АЖИЛЛАЖ БАЙНА» гэсэн үг БИШ.
+              Токен хадгалагдсан ч хуудас аппад захиалагдаагүй бол нэг ч
+              мессеж ирэхгүй, гэтэл дээрх ногоон мөр «холбогдлоо» гэж
+              хэлсээр байна. Энэ товч тэр зөрүүг илчилнэ.
+            */}
+            <div className="flex flex-wrap gap-2">
+              <Button variant="outline" onClick={runCheck} disabled={checking}>
+                {checking ? (
                   <Loader2 className="size-4 animate-spin" />
                 ) : (
-                  <Unplug className="size-4" />
+                  <Stethoscope className="size-4" />
                 )}
-                Салгах
+                Шалгах
               </Button>
+              {admin && (
+                <Button variant="outline" onClick={disconnect} disabled={busy}>
+                  {busy ? (
+                    <Loader2 className="size-4 animate-spin" />
+                  ) : (
+                    <Unplug className="size-4" />
+                  )}
+                  Салгах
+                </Button>
+              )}
+            </div>
+
+            {diag && (
+              <div className="space-y-2 rounded-lg border p-3">
+                <Row
+                  ok={diag.token.ok}
+                  label="Токен"
+                  value={
+                    diag.token.ok
+                      ? (diag.page?.name ?? 'хүчинтэй')
+                      : (diag.token.error ?? 'хүчингүй')
+                  }
+                  fix="Токен хугацаа дууссан бол Meta дээр шинээр үүсгээд доор дахин хадгална"
+                />
+
+                {/*
+                  ⚠ ХУГАЦАА — чимээгүй үхлийн цорын ганц урьдчилсан дохио.
+                  Page token ихэвчлэн 60 хоногт дуусдаг; тэр үед webhook
+                  ирсээр байгаад хариу илгээх бүрд л унана.
+                */}
+                <Row
+                  ok={diag.expiresAt === 'never'}
+                  warn={diag.expiresAt === null}
+                  label="Хугацаа"
+                  value={
+                    diag.expiresAt === 'never'
+                      ? 'Хэзээ ч дуусахгүй'
+                      : diag.expiresAt === null
+                        ? 'App ID өгөөгүй тул мэдэхгүй'
+                        : `${date(diag.expiresAt)}-нд дуусна`
+                  }
+                  fix={
+                    diag.expiresAt === null
+                      ? 'Доорх App ID талбарыг бөглөвөл шалгана'
+                      : 'Урт хугацааны токен авах: docs/17 §4'
+                  }
+                />
+
+                <Row
+                  ok={diag.subscription.subscribed && diag.subscription.missing.length === 0}
+                  label="Захиалга"
+                  value={
+                    diag.subscription.error
+                      ? diag.subscription.error
+                      : !diag.subscription.subscribed
+                        ? 'Хуудас аппад захиалагдаагүй — мессеж ИРЭХГҮЙ'
+                        : diag.subscription.missing.length
+                          ? `Дутуу: ${diag.subscription.missing.join(', ')}`
+                          : diag.subscription.fields.join(', ')
+                  }
+                  fix="«Захиалах» товчийг дар"
+                />
+
+                {admin &&
+                  (!diag.subscription.subscribed ||
+                    diag.subscription.missing.length > 0) && (
+                    <Button size="sm" onClick={subscribe} disabled={busy}>
+                      {busy ? (
+                        <Loader2 className="size-3.5 animate-spin" />
+                      ) : (
+                        <BellRing className="size-3.5" />
+                      )}
+                      Захиалах
+                    </Button>
+                  )}
+              </div>
             )}
           </>
         ) : (
@@ -172,9 +323,10 @@ export function MetaConnectionCard() {
                   хаягыг, Verify Token болгож энд бичсэн үгээ тавьж{' '}
                   <b>Verify and Save</b>
                 </li>
-                <li>
-                  Захиалах: <b>messages</b>, <b>message_echoes</b> —
-                  хоёрдахьгүй бол утаснаас бичсэн хариу энд харагдахгүй
+                <li className="text-foreground font-medium">
+                  Энд эргэж ирээд <b>«Шалгах»</b> → <b>«Захиалах»</b> дар —
+                  <b>messages</b>, <b>message_echoes</b> захиалагдана.
+                  (Хоёрдахьгүй бол утаснаас бичсэн хариу энд харагдахгүй.)
                 </li>
                 <li>
                   Туршихад <b>аппын админы</b> Facebook хаягаас бичнэ —
@@ -205,6 +357,16 @@ export function MetaConnectionCard() {
                   value={pageId}
                   onChange={(e) => setPageId(e.target.value)}
                   placeholder="102938475610293"
+                />
+              </Field>
+              <Field
+                label="App ID (заавал биш)"
+                hint="Өгвөл токен хэзээ дуусахыг шалгана"
+              >
+                <Input
+                  value={appId}
+                  onChange={(e) => setAppId(e.target.value)}
+                  placeholder={data.hasAppId ? '•••••• (хадгалсан)' : '1234567890123456'}
                 />
               </Field>
               <Field
@@ -280,6 +442,53 @@ function Field({
       <p className="text-muted-foreground text-xs">{label}</p>
       {children}
       {hint && <p className="text-muted-foreground text-[11px]">{hint}</p>}
+    </div>
+  );
+}
+
+/**
+ * Оношилгооны нэг мөр.
+ *
+ * ⚠ Зөвхөн ӨНГӨӨР биш, ДҮРСЭЭР ч ялгана — өнгө ялгах бэрхшээлтэй
+ * хүнд ногоон/улаан хоёр ижил саарал харагдана.
+ *
+ * `fix` нь ЗӨВХӨН асуудалтай үед. Бүх зүйл зөв байхад зөвлөгөө
+ * харуулах нь дэлгэцийг дүүргээд «ямар нэг зүйл буруу байна уу?»
+ * гэж эргэлзүүлнэ.
+ */
+function Row({
+  ok,
+  warn,
+  label,
+  value,
+  fix,
+}: {
+  ok: boolean;
+  warn?: boolean;
+  label: string;
+  value: string;
+  fix: string;
+}) {
+  const Icon = ok ? Check : warn ? AlertTriangle : X;
+  return (
+    <div className="flex items-start gap-2 text-xs">
+      <Icon
+        className={cn(
+          'mt-0.5 size-3.5 shrink-0',
+          ok
+            ? 'text-emerald-600 dark:text-emerald-400'
+            : warn
+              ? 'text-amber-600 dark:text-amber-400'
+              : 'text-destructive',
+        )}
+      />
+      <span className="text-muted-foreground w-20 shrink-0">{label}</span>
+      <span className="min-w-0 flex-1">
+        <span className={cn('block', !ok && !warn && 'text-destructive')}>
+          {value}
+        </span>
+        {!ok && <span className="text-muted-foreground block">{fix}</span>}
+      </span>
     </div>
   );
 }
