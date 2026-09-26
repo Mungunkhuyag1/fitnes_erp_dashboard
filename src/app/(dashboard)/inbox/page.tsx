@@ -2,9 +2,11 @@
 
 import {
   AlertTriangle,
+  ArrowLeft,
   ArrowRight,
   Loader2,
   MessageSquare,
+  Search,
   Send,
   UserPlus,
 } from 'lucide-react';
@@ -27,6 +29,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { useApi } from '@/hooks/use-api';
 import { api } from '@/lib/api';
@@ -51,6 +54,15 @@ export default function InboxPage() {
   const router = useRouter();
   const [active, setActive] = useState<string | null>(null);
   const [draft, setDraft] = useState('');
+  const [search, setSearch] = useState('');
+  /*
+   * ⚠ ЗӨВХӨН ЖИЖИГ ДЭЛГЭЦЭД — аль талбарыг харуулах вэ.
+   *
+   * `active`-ыг тэглэж «буцах»-ыг хийж БОЛОХГҮЙ: тэгвэл сонгосон
+   * яриа алдагдаж, буцаад ороход эхнээс нь хайх болно. `lg`-ээс
+   * дээш хоёулаа зэрэг харагддаг тул энэ төлөв нөлөөгүй.
+   */
+  const [mobileList, setMobileList] = useState(true);
   const [sending, setSending] = useState(false);
   const [linking, setLinking] = useState(false);
 
@@ -110,6 +122,7 @@ export default function InboxPage() {
   async function open(c: Conversation) {
     setActive(c.id);
     setDraft('');
+    setMobileList(false);
     if (c.unread > 0) {
       try {
         await api.post(`/meta/conversations/${c.id}/read`, {});
@@ -185,26 +198,78 @@ export default function InboxPage() {
   const c = thread?.conversation;
   const note = c ? WINDOW_NOTE[c.window] : null;
 
+  /*
+   * Хайлт — КЛИЕНТ талд. Ярианы тоо хэдэн зуугаас хэтрэхгүй бөгөөд
+   * бичих бүрд сервер рүү явахаас илүү шуурхай.
+   */
+  const t = search.trim().toLowerCase();
+  const shown = (list ?? []).filter(
+    (x) =>
+      !t ||
+      (x.name ?? '').toLowerCase().includes(t) ||
+      (x.lastMessageText ?? '').toLowerCase().includes(t) ||
+      (x.member?.name ?? '').toLowerCase().includes(t) ||
+      (x.member?.memberNo ?? '').includes(t),
+  );
+
   return (
-    <div className="flex flex-col gap-4">
+    /*
+     * ★ ДЭЛГЭЦИЙГ БҮТЭН ДҮҮРГЭНЭ.
+     *
+     * Урьд нь `max-h-[32rem]` ба `max-h-[22rem]` гэсэн ТОГТМОЛ өндөртэй
+     * байсан. Үр дүнд нь том дэлгэц дээр доод талын тал хувь нь хоосон
+     * үлдэж, тэр зуур мессежийн жагсаалт 22rem дотор шахагдаж 3-4
+     * мөр л харагддаг байв — чат уншихад хамгийн муу хослол.
+     *
+     * ⚠ `h-full` нь `main`-ы (AppShell) өндрөөс тооцоологдоно. Тэр нь
+     * `h-svh` дотор `flex-1 min-h-0` тул тодорхой өндөртэй. Гинжин
+     * хэлхээний ХАА НЭГТЭЭ `min-h-0` дутвал бүхэлдээ нурна.
+     */
+    <div className="flex h-full flex-col gap-4">
       <PageHeader
         title="Чат"
         description={status?.pageName ?? 'Facebook Page-ийн мессеж'}
       />
 
-      <div className="grid gap-4 lg:grid-cols-[20rem_1fr]">
+      <div className="grid min-h-0 flex-1 gap-4 lg:grid-cols-[22rem_1fr]">
         {/* ── Ярианы жагсаалт ── */}
-        <Card className="py-0">
-          <CardContent className="max-h-[32rem] overflow-y-auto p-0">
+        {/*
+          ⚠ Жижиг дэлгэцэд ХОЁРЫН НЭГ нь л харагдана. Хоёуланг нь
+          дараалуулбал жагсаалт дэлгэцийг эзэлж, яриа нь доор
+          нуугдана — гар утаснаас хариулах боломжгүй болно.
+        */}
+        <Card
+          className={cn(
+            // ⚠ `gap-0` — `Card` нь хүүхдүүдийн хооронд 1rem зай
+            // үлдээдэг. Хайлт ба жагсаалтын хооронд салангид зурвас
+            // үүсгэнэ.
+            'flex min-h-0 flex-col gap-0 py-0',
+            !mobileList && 'hidden lg:flex',
+          )}
+        >
+          {/* Хайлт — жагсаалтын ДЭЭД талд тогтоно, гүйхгүй. */}
+          <div className="shrink-0 border-b p-2">
+            <div className="relative">
+              <Search className="text-muted-foreground pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2" />
+              <Input
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Нэр, мессежээр хайх…"
+                className="pl-9"
+              />
+            </div>
+          </div>
+
+          <CardContent className="min-h-0 flex-1 overflow-y-auto p-0">
             {loading && !list ? (
               <div className="space-y-2 p-3">
                 {[0, 1, 2, 3].map((i) => (
                   <Skeleton key={i} className="h-14 w-full" />
                 ))}
               </div>
-            ) : list?.length ? (
+            ) : shown.length ? (
               <ul className="divide-border divide-y">
-                {list.map((x) => (
+                {shown.map((x) => (
                   <li key={x.id}>
                     <button
                       type="button"
@@ -248,139 +313,175 @@ export default function InboxPage() {
                 ))}
               </ul>
             ) : (
-              <p className="text-muted-foreground py-16 text-center text-sm">
-                Мессеж алга
-              </p>
+              <div className="text-muted-foreground flex h-full flex-col items-center justify-center gap-1 p-6 text-center text-sm">
+                <MessageSquare className="mb-1 size-8 opacity-30" />
+                {t ? (
+                  <p>«{search.trim()}» олдсонгүй</p>
+                ) : (
+                  <>
+                    <p>Мессеж алга</p>
+                    {/*
+                      ⚠ Хоосон байх нь АЛДАА байж болно: Development
+                      горимд зөвхөн аппад үүрэгтэй хүний мессеж ирдэг.
+                      Ажилтан үүнийг мэдэхгүй бол «эвдэрсэн» гэж бодно.
+                    */}
+                    <p className="max-w-56 text-xs">
+                      Апп Development горимд байвал зөвхөн аппад үүрэгтэй
+                      хүний мессеж ирнэ. Жирийн хүнийх ирэхэд App Review
+                      шаардлагатай.
+                    </p>
+                  </>
+                )}
+              </div>
             )}
           </CardContent>
         </Card>
 
         {/* ── Яриа ── */}
-        <Card className="py-0">
-          <CardContent className="p-0">
-            {!c ? (
-              <p className="text-muted-foreground py-24 text-center text-sm">
-                Зүүн талаас яриа сонгоно уу
-              </p>
-            ) : (
-              <div className="flex flex-col">
-                {/* Толгой — хэн болох, гишүүнтэй холбоос */}
-                <div className="flex flex-wrap items-center gap-3 border-b p-3">
-                  <ChatAvatar name={c.name} url={c.pictureUrl} />
-                  <div className="min-w-0">
-                    <p className="truncate text-sm font-medium">
-                      {c.name ?? 'Нэргүй'}
-                    </p>
-                    <p className="text-muted-foreground font-mono text-[11px]">
-                      {c.psid}
-                    </p>
-                  </div>
+        <Card
+          className={cn(
+            // ⚠ `gap-0` — эс бөгөөс толгой / мессеж / бичих талбар
+            // гурвын хооронд 1rem завсар үүсч, хүрээ нь тасарна.
+            'flex min-h-0 flex-col gap-0 py-0',
+            mobileList && 'hidden lg:flex',
+          )}
+        >
+          {!c ? (
+            <div className="text-muted-foreground flex flex-1 flex-col items-center justify-center gap-2 text-sm">
+              <MessageSquare className="size-10 opacity-20" />
+              Зүүн талаас яриа сонгоно уу
+            </div>
+          ) : (
+            <>
+              {/* Толгой — хэн болох, гишүүнтэй холбоос. ГҮЙХГҮЙ. */}
+              <div className="flex shrink-0 flex-wrap items-center gap-3 border-b p-3">
+                {/* Жижиг дэлгэцэд жагсаалт руу буцах цорын ганц зам. */}
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  onClick={() => setMobileList(true)}
+                  aria-label="Жагсаалт руу буцах"
+                  className="lg:hidden"
+                >
+                  <ArrowLeft className="size-4" />
+                </Button>
+                <ChatAvatar name={c.name} url={c.pictureUrl} />
+                <div className="min-w-0">
+                  <p className="truncate text-sm font-medium">
+                    {c.name ?? 'Нэргүй'}
+                  </p>
+                  <p className="text-muted-foreground font-mono text-[11px]">
+                    {c.psid}
+                  </p>
+                </div>
 
-                  <div className="ml-auto flex items-center gap-2">
-                    {c.member ? (
-                      <>
-                        <Badge variant="outline" className="font-normal">
-                          №{c.member.memberNo} · {c.member.name}
-                        </Badge>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => router.push(`/members/${c.member!.id}`)}
-                        >
-                          Гишүүн
-                          <ArrowRight className="size-4" />
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          onClick={() => link(null)}
-                          disabled={linking}
-                        >
-                          Салгах
-                        </Button>
-                      </>
-                    ) : (
-                      <div className="flex items-center gap-2">
-                        <UserPlus className="text-muted-foreground size-4" />
-                        <div className="w-56">
-                          <MemberPicker
-                            value={null}
-                            onChange={(m) => m && link(m.id)}
-                            placeholder="Гишүүнтэй холбох…"
-                          />
-                        </div>
+                <div className="ml-auto flex flex-wrap items-center gap-2">
+                  {c.member ? (
+                    <>
+                      <Badge variant="outline" className="font-normal">
+                        №{c.member.memberNo} · {c.member.name}
+                      </Badge>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => router.push(`/members/${c.member!.id}`)}
+                      >
+                        Гишүүн
+                        <ArrowRight className="size-4" />
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => link(null)}
+                        disabled={linking}
+                      >
+                        Салгах
+                      </Button>
+                    </>
+                  ) : (
+                    <div className="flex items-center gap-2">
+                      <UserPlus className="text-muted-foreground size-4" />
+                      <div className="w-56">
+                        <MemberPicker
+                          value={null}
+                          onChange={(m) => m && link(m.id)}
+                          placeholder="Гишүүнтэй холбох…"
+                        />
                       </div>
-                    )}
-                  </div>
-                </div>
-
-                {/* Мессежүүд */}
-                <div className="max-h-[22rem] space-y-2 overflow-y-auto p-3">
-                  {thread.messages.map((m) => (
-                    <ChatBubble key={m.id} m={m} />
-                  ))}
-                  <div ref={endRef} />
-                </div>
-
-                {/* Цонхны анхааруулга */}
-                {note && (
-                  <div
-                    className={cn(
-                      'flex items-start gap-2 border-t px-3 py-2 text-xs',
-                      c.window === 'closed'
-                        ? 'text-destructive bg-destructive/5'
-                        : 'text-muted-foreground bg-muted/40',
-                    )}
-                  >
-                    <AlertTriangle className="mt-0.5 size-3.5 shrink-0" />
-                    <span>{note}</span>
-                  </div>
-                )}
-
-                {/* Бичих талбар */}
-                <div className="flex items-end gap-2 border-t p-3">
-                  <Textarea
-                    value={draft}
-                    onChange={(e) => setDraft(e.target.value)}
-                    onKeyDown={(e) => {
-                      /*
-                        Enter = илгээх, Shift+Enter = мөр таслах.
-
-                        ⚠ `isComposing` — КИРИЛЛ/IME ГАРЫН АСУУДАЛ.
-                        Зарим гарын арга утга баталгаажуулахад Enter илгээдэг
-                        тул үүнийг шалгахгүй бол үг дундуур мессеж явна.
-                      */
-                      if (e.nativeEvent.isComposing) return;
-                      if (e.key === 'Enter' && !e.shiftKey) {
-                        e.preventDefault();
-                        send();
-                      }
-                    }}
-                    placeholder={
-                      c.window === 'closed'
-                        ? 'Хариу бичих хугацаа дууссан'
-                        : 'Хариу бичих…'
-                    }
-                    disabled={c.window === 'closed' || sending}
-                    rows={2}
-                    className="min-h-0 resize-none"
-                  />
-                  <Button
-                    onClick={send}
-                    disabled={
-                      c.window === 'closed' || sending || !draft.trim()
-                    }
-                  >
-                    {sending ? (
-                      <Loader2 className="size-4 animate-spin" />
-                    ) : (
-                      <Send className="size-4" />
-                    )}
-                  </Button>
+                    </div>
+                  )}
                 </div>
               </div>
-            )}
-          </CardContent>
+
+              {/*
+                ★ ЗӨВХӨН ЭНЭ ХЭСЭГ ГҮЙНЭ.
+                `min-h-0` — flex хүүхэд агшихыг зөвшөөрнө; үүнгүй бол
+                агуулга нь картыг сунгаж, `overflow-y-auto` огт
+                ажиллахгүй.
+              */}
+              <div className="min-h-0 flex-1 space-y-2 overflow-y-auto p-3">
+                {thread.messages.map((m) => (
+                  <ChatBubble key={m.id} m={m} />
+                ))}
+                <div ref={endRef} />
+              </div>
+
+              {/* Цонхны анхааруулга */}
+              {note && (
+                <div
+                  className={cn(
+                    'flex shrink-0 items-start gap-2 border-t px-3 py-2 text-xs',
+                    c.window === 'closed'
+                      ? 'text-destructive bg-destructive/5'
+                      : 'text-muted-foreground bg-muted/40',
+                  )}
+                >
+                  <AlertTriangle className="mt-0.5 size-3.5 shrink-0" />
+                  <span>{note}</span>
+                </div>
+              )}
+
+              {/* Бичих талбар — ҮРГЭЛЖ ДООД талд тогтоно. */}
+              <div className="flex shrink-0 items-end gap-2 border-t p-3">
+                <Textarea
+                  value={draft}
+                  onChange={(e) => setDraft(e.target.value)}
+                  onKeyDown={(e) => {
+                    /*
+                      Enter = илгээх, Shift+Enter = мөр таслах.
+
+                      ⚠ `isComposing` — КИРИЛЛ/IME ГАРЫН АСУУДАЛ.
+                      Зарим гарын арга утга баталгаажуулахад Enter илгээдэг
+                      тул үүнийг шалгахгүй бол үг дундуур мессеж явна.
+                    */
+                    if (e.nativeEvent.isComposing) return;
+                    if (e.key === 'Enter' && !e.shiftKey) {
+                      e.preventDefault();
+                      send();
+                    }
+                  }}
+                  placeholder={
+                    c.window === 'closed'
+                      ? 'Хариу бичих хугацаа дууссан'
+                      : 'Хариу бичих…'
+                  }
+                  disabled={c.window === 'closed' || sending}
+                  rows={2}
+                  className="min-h-0 resize-none"
+                />
+                <Button
+                  onClick={send}
+                  disabled={c.window === 'closed' || sending || !draft.trim()}
+                >
+                  {sending ? (
+                    <Loader2 className="size-4 animate-spin" />
+                  ) : (
+                    <Send className="size-4" />
+                  )}
+                </Button>
+              </div>
+            </>
+          )}
         </Card>
       </div>
     </div>

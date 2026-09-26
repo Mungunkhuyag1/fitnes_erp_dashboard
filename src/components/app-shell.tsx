@@ -422,9 +422,15 @@ export function AppShell({ children }: { children: ReactNode }) {
         {/* Агуулга нь ЭНД гүйнэ — хуудас бүхэлдээ гүйхгүй. */}
         {/* `min-h-0` — flex хүүхэд агшихыг зөвшөөрнө; үүнгүй бол
             `overflow-y-auto` ажиллахгүй. */}
-        <main className="min-h-0 min-w-0 flex-1 overflow-y-auto p-4 lg:p-6">
+        {/*
+          ⚠ `<main>` БИШ, `<div>`. `SidebarInset` нь ӨӨРӨӨ `<main>`
+          элемент болж render хийгддэг тул энд дахин `<main>` бичвэл
+          давхарлаж, HTML-д хүчингүй болно. Дэлгэц уншигч «үндсэн
+          агуулга» хаана эхэлж байгааг хэлж чадахгүй болно.
+        */}
+        <div className="min-h-0 min-w-0 flex-1 overflow-y-auto p-4 lg:p-6">
           {children}
-        </main>
+        </div>
 
         {/*
           Хөвөгч чат — `main`-аас ГАДНА.
