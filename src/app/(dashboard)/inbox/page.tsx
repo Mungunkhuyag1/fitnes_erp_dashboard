@@ -231,6 +231,30 @@ export default function InboxPage() {
         description={status?.pageName ?? 'Facebook Page-ийн мессеж'}
       />
 
+      {/*
+        ⚠ DEVELOPMENT ГОРИМЫН ТАЙЛБАР.
+
+        Апп нь Meta-гийн Development горимд байхад ЗӨВХӨН аппад үүрэгтэй
+        хүний (админ / developer / tester) мессеж webhook болж ирнэ.
+        Бусдынх нь ЧИМЭЭГҮЙ хаягдана — алдаа ч гарахгүй, лог ч үлдэхгүй.
+
+        Ажилтан Messenger аппдаа 10 яриа харж байгаад WinFit дээр нэгийг
+        л хараад «эвдэрсэн» гэж дүгнэнэ. Тэр дүгнэлт нь хэдэн цаг
+        дэмий хайлт үүсгэдэг — тиймээс ил бичив.
+
+        ⚠ Аппын горимыг Graph-аас НАЙДВАРТАЙ уншиж чадахгүй тул энэ нь
+        нөхцөлт биш, ҮРГЭЛЖ харагдана. Live болсны дараа админ өөрөө
+        хасна — худал «бүгд зөв» гэж хэлэхээс дээр.
+      */}
+      <p className="text-muted-foreground bg-muted/40 shrink-0 rounded-lg border px-3 py-2 text-xs">
+        ⓘ Апп <b>Development</b> горимд байвал зөвхөн Meta-гийн аппад
+        үүрэгтэй хүний (админ / developer / tester) мессеж энд харагдана.
+        Жирийн үйлчлүүлэгчийн мессеж Messenger дээр ирсэн ч WinFit рүү
+        <b> ирэхгүй</b> — Meta тэднийг чимээгүй шүүдэг.{' '}
+        <b>App Review</b> хийж <b>Live</b> горимд шилжүүлснээр засагдана
+        (docs/17 §0).
+      </p>
+
       <div className="grid min-h-0 flex-1 gap-4 lg:grid-cols-[22rem_1fr]">
         {/* ── Ярианы жагсаалт ── */}
         {/*
