@@ -56,10 +56,24 @@ export function useApi<T>(
 
   const reload = useCallback(() => setTick((t) => t + 1), []);
 
+  /*
+   * ⚠ Таб НУУГДСАН үед шинэчлэхгүй — ресепшний компьютер дээр өдөржин
+   * нээлттэй байх хуудас хэрэггүй хүсэлт явуулсаар байна. Буцаж ороход
+   * интервалыг хүлээлгүй ШУУД нэг удаа шинэчилнэ.
+   */
   useEffect(() => {
     if (!opts.refreshMs || !path) return;
-    const id = setInterval(reload, opts.refreshMs);
-    return () => clearInterval(id);
+    const id = setInterval(() => {
+      if (!document.hidden) reload();
+    }, opts.refreshMs);
+    const onVisible = () => {
+      if (!document.hidden) reload();
+    };
+    document.addEventListener('visibilitychange', onVisible);
+    return () => {
+      clearInterval(id);
+      document.removeEventListener('visibilitychange', onVisible);
+    };
   }, [opts.refreshMs, path, reload]);
 
   const fresh = cache.key === key;
