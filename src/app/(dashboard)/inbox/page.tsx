@@ -4,6 +4,7 @@ import {
   AlertTriangle,
   ArrowLeft,
   ArrowRight,
+  ExternalLink,
   Loader2,
   MessageSquare,
   Search,
@@ -20,13 +21,14 @@ import { PageHeader } from '@/components/page-header';
 import {
   ChatAvatar,
   ChatBubble,
+  inboxUrl,
   WINDOW_NOTE,
   type ChatStatus,
   type Conversation,
   type Message,
 } from '@/components/chat-parts';
 import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
+import { Button, buttonVariants } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Input } from '@/components/ui/input';
@@ -400,6 +402,17 @@ export default function InboxPage() {
                 </div>
 
                 <div className="ml-auto flex flex-wrap items-center gap-2">
+                  {status?.pageId && (
+                    <a
+                      href={inboxUrl(status.pageId, c.psid)}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className={buttonVariants({ size: 'sm', variant: 'ghost' })}
+                    >
+                      Facebook
+                      <ExternalLink className="size-4" />
+                    </a>
+                  )}
                   {c.member ? (
                     <>
                       <Badge variant="outline" className="font-normal">

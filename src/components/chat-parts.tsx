@@ -47,7 +47,26 @@ export interface Message {
 
 export interface ChatStatus {
   connected: boolean;
+  pageId: string | null;
   pageName: string | null;
+}
+
+/**
+ * Business Suite-ийн хайрцагт тухайн хүний яриаг нээх холбоос.
+ *
+ * ★ ЯАГААД — WinFit-ээс хариулах боломжгүй үед (24 цагийн цонх хаагдсан,
+ *   зураг/дуу илгээх) ажилтан нэг даралтаар тэр яриа руу шилжинэ.
+ *
+ * ⚠ Meta-гийн БАРИМТЖУУЛААГҮЙ URL — `selected_item_id`-д PSID өгнө.
+ *   Meta өөрчилбөл яриа сонгогдохгүй ч хайрцаг нь нээгдсээр байна.
+ */
+export function inboxUrl(pageId: string, psid: string): string {
+  const q = new URLSearchParams({
+    asset_id: pageId,
+    selected_item_id: psid,
+    thread_type: 'FB_MESSAGE',
+  });
+  return `https://business.facebook.com/latest/inbox/all?${q}`;
 }
 
 /**
