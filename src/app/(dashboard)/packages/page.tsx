@@ -1,10 +1,20 @@
 "use client";
 
-import { Loader2, Pencil, Plus, Power } from "lucide-react";
+import { Loader2, Pencil, Plus, Power, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 import { DataTable, type Column } from "@/components/data-table";
 import { PageHeader } from "@/components/page-header";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -68,6 +78,8 @@ export default function PackagesPage() {
 
   const [editing, setEditing] = useState<Pkg | null>(null);
   const [creating, setCreating] = useState(false);
+  const [removing, setRemoving] = useState<Pkg | null>(null);
+  const [removeBusy, setRemoveBusy] = useState(false);
   const [form, setForm] = useState({
     name: "",
     days: "",
@@ -158,6 +170,27 @@ export default function PackagesPage() {
       reload();
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Алдаа гарлаа");
+    }
+  }
+
+  async function doRemove() {
+    if (!removing) return;
+    setRemoveBusy(true);
+    try {
+      const r = await api.del<{ mode: "deleted" | "archived" }>(
+        `/packages/${removing.id}/permanent`,
+      );
+      toast.success(
+        r.mode === "deleted"
+          ? "Багц устгагдлаа"
+          : "Багц устгагдлаа — өмнөх борлуулалт тайланд хэвээр",
+      );
+      setRemoving(null);
+      reload();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Алдаа гарлаа");
+    } finally {
+      setRemoveBusy(false);
     }
   }
 
@@ -255,6 +288,15 @@ export default function PackagesPage() {
             >
               <Power className="size-3.5" />
             </Button>
+            <Button
+              size="icon-sm"
+              variant="ghost"
+              className="text-destructive hover:text-destructive"
+              aria-label="Устгах"
+              onClick={() => setRemoving(p)}
+            >
+              <Trash2 className="size-3.5" />
+            </Button>
           </div>
         ) : null,
       className: "text-right",
@@ -294,7 +336,8 @@ export default function PackagesPage() {
       <p className="text-muted-foreground text-xs">
         Багцын үнэ/хугацааг өөрчлөхөд <strong>аль хэдийн зарагдсан</strong>{" "}
         гишүүнчлэл хөндөгдөхгүй — худалдан авалтын дэвтэрт тухайн үеийн утга
-        хуулбарлагдсан байдаг. Устгахын оронд идэвхгүй болгоно.
+        хуулбарлагдсан байдаг. Түр зогсоох бол идэвхгүй болго — устгасан багцыг
+        сэргээх боломжгүй.
       </p>
 
       <Dialog
@@ -572,6 +615,39 @@ export default function PackagesPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <AlertDialog
+        open={removing !== null}
+        onOpenChange={(o) => !o && !removeBusy && setRemoving(null)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>«{removing?.name}» багцыг устгах уу?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Багц жагсаалт болон вэб сайтаас алга болно. Үүнийг буцаах
+              боломжгүй.
+              <br />
+              <br />
+              Аль хэдийн зарагдсан бол гишүүдийн эрх, өмнөх борлуулалтын
+              тайлан хөндөгдөхгүй.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={removeBusy}>Болих</AlertDialogCancel>
+            <AlertDialogAction
+              variant="destructive"
+              disabled={removeBusy}
+              onClick={(e) => {
+                e.preventDefault();
+                void doRemove();
+              }}
+            >
+              {removeBusy && <Loader2 className="size-4 animate-spin" />}
+              Устгах
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
