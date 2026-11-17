@@ -24,6 +24,8 @@ interface Pkg {
   id: string;
   name: string;
   days: number;
+  /** `null` = хоногийн багц. */
+  entries: number | null;
   price: number;
   /** Хосын багц = 2. Тэр үед хамтрагч сонгох ёстой. */
   seats: number;
@@ -47,6 +49,7 @@ export function ExtendDialog({
   memberId,
   memberName,
   cancelled = false,
+  entries = null,
   open,
   onOpenChange,
   onDone,
@@ -55,6 +58,8 @@ export function ExtendDialog({
   memberName: string;
   /** Гишүүн цуцлагдсан эсэх — сунгалт нь эрхийг нь сэргээнэ. */
   cancelled?: boolean;
+  /** Гишүүний одоогийн оролтын багц — байвал багцгүй олголт түүнд нэгдэнэ. */
+  entries?: { left: number; total: number; validUntil: string } | null;
   open: boolean;
   onOpenChange: (v: boolean) => void;
   onDone: () => void;
@@ -72,6 +77,8 @@ export function ExtendDialog({
   const [mode, setMode] = useState<"package" | "custom">("package");
   const [pkgId, setPkgId] = useState<string | null>(null);
   const [customDays, setCustomDays] = useState("");
+  /** Багцгүй олголтын оролт — хоосон бол хязгааргүй хоног. */
+  const [customEntries, setCustomEntries] = useState("");
   const [amount, setAmount] = useState("");
   /**
    * Мөнгийг ХОЖИМ авна — эрх нь одоо нээгдэнэ.
@@ -114,7 +121,8 @@ export function ExtendDialog({
     try {
       await api.post(`/members/${memberId}/extend`, {
         packageId: custom ? undefined : (pkgId ?? undefined),
-        days: custom ? Number(customDays) : undefined,
+        days: custom ? Number(customDays || 0) : undefined,
+        entries: custom && customEntries ? Number(customEntries) : undefined,
         amount: Number(amount || 0),
         method: custom ? "manual" : "cash",
         payLater: payLater || undefined,
@@ -131,6 +139,7 @@ export function ExtendDialog({
       setMode("package");
       setPkgId(null);
       setCustomDays("");
+      setCustomEntries("");
       setAmount("");
       setPayLater(false);
       setReason("");
@@ -143,7 +152,9 @@ export function ExtendDialog({
   }
 
   const valid = custom
-    ? Number(customDays) > 0 && reason.trim().length > 0
+    ? reason.trim().length > 0 &&
+      // Оролтын багцтай гишүүнд зөвхөн оролт нэмж болно (хоног 0).
+      (Number(customDays) > 0 || (!!entries && Number(customEntries) > 0))
     : // Хосын багц сонгосон ч хамтрагч заагаагүй бол илгээхгүй —
       // сервер татгалзах ч ажилтанд урьдчилан хэлэх нь зөв.
       !!pkgId && (!needsPartner || !!partnerId);
@@ -214,7 +225,10 @@ export function ExtendDialog({
                   >
                     <span className="block text-sm font-medium">{p.name}</span>
                     <span className="text-muted-foreground block text-xs tabular-nums">
-                      {p.days} хоног · {money(p.price)}
+                      {p.entries !== null
+                        ? `${p.entries} оролт · ${p.days} хоногт`
+                        : `${p.days} хоног`}{" "}
+                      · {money(p.price)}
                     </span>
                   </button>
                 ))}
@@ -235,15 +249,28 @@ export function ExtendDialog({
                       : "hover:bg-accent/50",
                   )}
                 >
-                  Хоногоор (багцгүй)
+                  {entries
+                    ? "Хоног / оролт нэмэх (багцгүй)"
+                    : "Хоногоор эсвэл оролтоор (багцгүй)"}
                 </button>
               </div>
             </div>
 
+            {custom && entries && (
+              <p className="bg-primary/5 text-muted-foreground rounded-md px-3 py-2 text-xs">
+                Одоо оролтын багцтай ({entries.left}/{entries.total} оролт
+                үлдсэн). Энд оруулсан хоног, оролт{" "}
+                <span className="text-foreground font-medium">
+                  тэр багцад нэмэгдэнэ
+                </span>{" "}
+                — зөвхөн оролт нэмэх бол хоногийг хоосон үлдээнэ.
+              </p>
+            )}
+
             {custom && (
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-3 gap-3">
                 <div className="space-y-2">
-                  <Label htmlFor="days">Хоног *</Label>
+                  <Label htmlFor="days">Хоног{!entries && " *"}</Label>
                   <Input
                     id="days"
                     inputMode="numeric"
@@ -251,7 +278,19 @@ export function ExtendDialog({
                     onChange={(e) =>
                       setCustomDays(e.target.value.replace(/\D/g, ""))
                     }
-                    placeholder="30"
+                    placeholder={entries ? "0" : "30"}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="entries">Оролт</Label>
+                  <Input
+                    id="entries"
+                    inputMode="numeric"
+                    value={customEntries}
+                    onChange={(e) =>
+                      setCustomEntries(e.target.value.replace(/\D/g, ""))
+                    }
+                    placeholder={entries ? "0" : "Хязгааргүй"}
                   />
                 </div>
                 <div className="space-y-2">

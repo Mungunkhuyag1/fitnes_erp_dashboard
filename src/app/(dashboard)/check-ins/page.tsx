@@ -49,6 +49,8 @@ interface EventRow {
   reason: string;
   reasonLabel: string;
   verifyMode: string | null;
+  /** Оролтын багцаас 1 оролт хасагдсан уу. */
+  entryCharged?: boolean;
   /** Уншуулах үеийн зургийн ЗАМ — терминал дээр байдаг. */
   picturePath: string | null;
 }
@@ -281,11 +283,18 @@ export default function CheckInsPage() {
       header: 'Үр дүн',
       sortKey: 'reason',
       cell: (e) => (
-        <AccessResult
-          granted={e.granted}
-          reason={e.reason}
-          reasonLabel={e.reasonLabel}
-        />
+        <div className="flex flex-wrap items-center gap-1.5">
+          <AccessResult
+            granted={e.granted}
+            reason={e.reason}
+            reasonLabel={e.reasonLabel}
+          />
+          {e.entryCharged && (
+            <span className="bg-primary/10 text-primary rounded px-1.5 py-0.5 text-[10px] font-medium">
+              −1 оролт
+            </span>
+          )}
+        </div>
       ),
       className: 'w-44',
     },

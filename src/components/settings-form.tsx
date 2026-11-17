@@ -23,6 +23,10 @@ export interface Settings {
   locker_zones: string[];
   locker_zone_by_gender: Record<string, string>;
   locker_price_per_month: number;
+  /** Оролтын багцад уншуулалт бүр / цонх / өдөрт 1. */
+  entry_charge_mode: 'every' | 'window' | 'day';
+  /** `window` горимын давтан уншуулах цонх (минут). */
+  entry_rescan_minutes: number;
 }
 
 /**

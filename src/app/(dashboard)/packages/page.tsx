@@ -37,6 +37,8 @@ interface Pkg {
   id: string;
   name: string;
   days: number;
+  /** `null` = хоногийн (хязгааргүй) багц. */
+  entries: number | null;
   price: number;
   audience: Audience;
   audienceLabel: string;
@@ -69,6 +71,8 @@ export default function PackagesPage() {
   const [form, setForm] = useState({
     name: "",
     days: "",
+    byEntries: false,
+    entries: "",
     price: "",
     sortOrder: "",
     audience: "standard" as Audience,
@@ -84,6 +88,8 @@ export default function PackagesPage() {
     setForm({
       name: "",
       days: "30",
+      byEntries: false,
+      entries: "",
       price: "",
       sortOrder: "",
       audience: "standard",
@@ -100,6 +106,8 @@ export default function PackagesPage() {
     setForm({
       name: p.name,
       days: String(p.days),
+      byEntries: p.entries !== null,
+      entries: p.entries !== null ? String(p.entries) : "",
       price: String(p.price),
       sortOrder: String(p.sortOrder),
       audience: p.audience,
@@ -118,6 +126,8 @@ export default function PackagesPage() {
     const body = {
       name: form.name,
       days: Number(form.days),
+      // `null` нь оролтын багцыг хоногийн багц болгож буцаана.
+      entries: form.byEntries ? Number(form.entries) : null,
       price: Number(form.price || 0),
       sortOrder: Number(form.sortOrder || 0),
       audience: form.audience,
@@ -166,6 +176,7 @@ export default function PackagesPage() {
           {p.requiresProof && <Flag tone="warn">баримт</Flag>}
           {p.seats > 1 && <Flag>{p.seats} хүн</Flag>}
           {!p.online && <Flag>зөвхөн ресепшн</Flag>}
+          {p.entries !== null && <Flag tone="accent">оролтоор</Flag>}
         </div>
       ),
     },
@@ -187,9 +198,15 @@ export default function PackagesPage() {
     {
       key: "days",
       header: "Хугацаа",
-      cell: (p) => (
-        <span className="font-mono text-sm tabular-nums">{p.days} хоног</span>
-      ),
+      cell: (p) =>
+        p.entries !== null ? (
+          <span className="font-mono text-sm tabular-nums">
+            {p.entries} оролт
+            <span className="text-muted-foreground"> · {p.days} хоногт</span>
+          </span>
+        ) : (
+          <span className="font-mono text-sm tabular-nums">{p.days} хоног</span>
+        ),
     },
     {
       key: "price",
@@ -198,10 +215,12 @@ export default function PackagesPage() {
     },
     {
       key: "perday",
-      header: "Хоногт",
+      header: "Нэгж үнэ",
       cell: (p) => (
         <span className="text-muted-foreground text-sm">
-          {money(Math.round(p.price / p.days))}
+          {p.entries !== null
+            ? `${money(Math.round(p.price / p.entries))} / оролт`
+            : `${money(Math.round(p.price / p.days))} / хоног`}
         </span>
       ),
       hideOnMobile: true,
@@ -248,7 +267,10 @@ export default function PackagesPage() {
     // `h-full` — хуудас дэлгэцийг ЯГ дүүргэнэ. Ингэснээр гадна талд
     // гүйх зүйл үлдэхгүй, зөвхөн хүснэгтийн бие дотроо гүйнэ.
     <div className="flex flex-col gap-5">
-      <PageHeader title="Багц" description="Гишүүнчлэлийн хугацаа ба үнэ">
+      <PageHeader
+        title="Багц"
+        description="Гишүүнчлэлийн хугацаа (хоногоор эсвэл оролтоор) ба үнэ"
+      >
         {can("manager") && (
           <Button onClick={openCreate}>
             <Plus className="size-4" />
@@ -288,7 +310,8 @@ export default function PackagesPage() {
           <DialogHeader>
             <DialogTitle>{editing ? "Багц засах" : "Шинэ багц"}</DialogTitle>
             <DialogDescription>
-              Зөвхөн хугацаа — цагийн хязгаар байхгүй
+              Хоногоор — хугацаандаа хязгааргүй. Оролтоор — тогтсон хугацаанд
+              тодорхой тооны оролт.
             </DialogDescription>
           </DialogHeader>
 
@@ -302,9 +325,63 @@ export default function PackagesPage() {
                 placeholder="1 сарын багц"
               />
             </div>
+            <div className="space-y-2">
+              <Label>Тооцох арга</Label>
+              <div className="bg-muted grid grid-cols-2 gap-1 rounded-lg p-1">
+                {[
+                  { v: false, label: "Хоногоор" },
+                  { v: true, label: "Оролтоор" },
+                ].map((o) => (
+                  <button
+                    key={o.label}
+                    type="button"
+                    onClick={() =>
+                      setForm({
+                        ...form,
+                        byEntries: o.v,
+                        // Оролтын багцын түгээмэл хугацаа — 2 сар.
+                        days: o.v && form.days === "30" ? "60" : form.days,
+                        entries: o.v && !form.entries ? "12" : form.entries,
+                      })
+                    }
+                    className={cn(
+                      "rounded-md px-3 py-1.5 text-sm font-medium transition-colors",
+                      form.byEntries === o.v
+                        ? "bg-background shadow-sm"
+                        : "text-muted-foreground hover:text-foreground",
+                    )}
+                  >
+                    {o.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+            {form.byEntries && (
+              <div className="space-y-2">
+                <Label htmlFor="pentries">Оролтын тоо</Label>
+                <Input
+                  id="pentries"
+                  inputMode="numeric"
+                  className="w-28"
+                  value={form.entries}
+                  onChange={(e) =>
+                    setForm({
+                      ...form,
+                      entries: e.target.value.replace(/\D/g, ""),
+                    })
+                  }
+                />
+                <p className="text-muted-foreground text-xs">
+                  Доорх хоногийн дотор хэдэн удаа орох вэ. Хугацаа эсвэл оролт —
+                  аль нь түрүүлж дуусна, тэр үед эрх хаагдана.
+                </p>
+              </div>
+            )}
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-2">
-                <Label htmlFor="pdays">Хоног</Label>
+                <Label htmlFor="pdays">
+                  {form.byEntries ? "Хүчинтэй хоног" : "Хоног"}
+                </Label>
                 <Input
                   id="pdays"
                   inputMode="numeric"
@@ -482,7 +559,12 @@ export default function PackagesPage() {
             </Button>
             <Button
               onClick={save}
-              disabled={busy || !form.name.trim() || Number(form.days) < 1}
+              disabled={
+                busy ||
+                !form.name.trim() ||
+                Number(form.days) < 1 ||
+                (form.byEntries && Number(form.entries) < 1)
+              }
             >
               {busy && <Loader2 className="size-4 animate-spin" />}
               Хадгалах

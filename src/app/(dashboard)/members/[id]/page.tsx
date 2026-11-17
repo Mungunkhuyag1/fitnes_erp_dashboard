@@ -86,6 +86,8 @@ interface MemberDetail {
   status: string;
   accessEndsAt: string | null;
   daysLeft: number | null;
+  /** Оролтын багцын үлдэгдэл — хоногийн эрхтэй бол `null`. */
+  entries: { total: number; used: number; left: number; validUntil: string } | null;
   faceEnrolled: boolean;
   faceEnrolledAt: string | null;
   /** Терминал дээрх царайн зургийн ЗАМ — хостгүй. */
@@ -108,6 +110,13 @@ interface MembershipRow {
   id: string;
   packageName: string | null;
   days: number;
+  /** `null` = хоногийн эрх. */
+  entries: number | null;
+  entriesUsed: number;
+  /** Өмнөх оролтын багцад нэгдсэн (чөлөө, нэмэлт оролт). */
+  joinsPrevious: boolean;
+  /** Оролт дуусч хаагдсан агшин. */
+  closedAt: string | null;
   amount: number;
   source: string;
   reason: string | null;
@@ -473,7 +482,13 @@ export default function MemberDetailPage() {
       header: 'Багц',
       cell: (r) => (
         <span className={cn(r.reversedAt && 'text-muted-foreground line-through')}>
-          {r.packageName ?? `${r.days} хоног (гараар)`}
+          {r.packageName ?? grantLabel(r)}
+          {r.entries !== null && !r.joinsPrevious && (
+            <span className="text-muted-foreground ml-1.5 text-xs tabular-nums">
+              {r.entriesUsed}/{r.entries} оролт
+              {r.closedAt && ' · дууссан'}
+            </span>
+          )}
         </span>
       ),
     },
@@ -659,6 +674,22 @@ export default function MemberDetailPage() {
             <Field label="Үлдсэн">
               <DaysLeft days={m.daysLeft} />
             </Field>
+            {m.entries && (
+              <Field label="Оролт">
+                <span
+                  className={cn(
+                    'font-medium tabular-nums',
+                    m.entries.left === 0
+                      ? 'text-destructive'
+                      : m.entries.left <= 2
+                        ? 'text-amber-600 dark:text-amber-400'
+                        : 'text-emerald-600 dark:text-emerald-400',
+                  )}
+                >
+                  {m.entries.left} / {m.entries.total} үлдсэн
+                </span>
+              </Field>
+            )}
           </CardContent>
         </Card>
 
@@ -999,9 +1030,19 @@ export default function MemberDetailPage() {
                 { label: 'Огноо', value: dateTime(msRow.createdAt) },
                 {
                   label: 'Багц',
-                  value: msRow.packageName ?? `${msRow.days} хоног (гараар)`,
+                  value: msRow.packageName ?? grantLabel(msRow),
                 },
                 { label: 'Хоног', value: `${msRow.days} хоног` },
+                ...(msRow.entries !== null
+                  ? [
+                      {
+                        label: 'Оролт',
+                        value: msRow.joinsPrevious
+                          ? `+${msRow.entries} (одоогийн багцад нэмэгдсэн)`
+                          : `${msRow.entriesUsed} / ${msRow.entries} ашигласан`,
+                      },
+                    ]
+                  : []),
                 { label: 'Дүн', value: money(msRow.amount) },
                 {
                   label: 'Хэлбэр',
@@ -1085,6 +1126,7 @@ export default function MemberDetailPage() {
         memberId={m.id}
         memberName={m.name}
         cancelled={m.status === 'cancelled'}
+        entries={m.entries}
         open={extendOpen}
         onOpenChange={setExtendOpen}
         onDone={() => {
@@ -1140,4 +1182,18 @@ export default function MemberDetailPage() {
       </AlertDialog>
     </div>
   );
+}
+
+/** Багцгүй олголтын нэр — хоног ба/эсвэл оролт. */
+function grantLabel(r: { days: number; entries: number | null; joinsPrevious: boolean }): string {
+  if (r.joinsPrevious) {
+    const parts = [
+      r.days > 0 ? `+${r.days} хоног` : null,
+      r.entries ? `+${r.entries} оролт` : null,
+    ].filter(Boolean);
+    return `${parts.join(', ') || 'Нэмэлт'} (оролтын багцад)`;
+  }
+  return r.entries !== null
+    ? `${r.entries} оролт · ${r.days} хоног (гараар)`
+    : `${r.days} хоног (гараар)`;
 }
